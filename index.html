@@ -1,401 +1,993 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-  <title>Dysomega</title>
-  <?php 
-	session_start();
-	?>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dysomega — Indie Game Studio</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="keywords" content="Games Game Indiedev Indiegame Dev Indie Belgium Company Programming Tools Cpp SDL2 Unity Development Chuture" />
-  <meta name="Description" content="A small belgian indie game development company, we make games~" />
-  <link rel="stylesheet" href="./external/bootstrap.min.css">
-  <script src="external/jquery.min.js.download"></script>
-  <script src="external/popper.min.js.download"></script>
-  <script src="external/bootstrap.min.js.download"></script>
-<link rel="stylesheet" href="css/basic.css" type="text/css" media="all" />
-<link rel="icon" href="images/DysomegaLogo_V2_32_Alpha.png" type="image/png" sizes="32x32">
-<link rel="stylesheet" href="css/gamefilter.css" type="text/css" media="all" />
-<script src="javascript/gamefilter.js"></script>
-<!-- BEGIN TUMBLR FACEBOOK OPENGRAPH TAGS -->
-<!-- If you'd like to specify your own Open Graph tags, define the og:url and og:title tags in your theme's HTML. -->
-<!-- Read more: http://ogp.me/ -->
-<meta property="og:title" content="Dysomega">
-<meta property="og:url" content="https://dysomega.com/?og=1">
-<meta property="og:image" content="https://dysomega.com/images/DysomegaLogo_V2_64_Alpha.png">
-<meta property="og:description" content="A small belgian game company that makes unordinary games">
-<meta property="og:type" content="website">
-<!-- END TUMBLR FACEBOOK OPENGRAPH TAGS -->
-<!-- TWITTER TAGS -->
-<meta name="twitter:card" content="summary">
-<meta name="twitter:site" content="@Dysomega_Games">
-<meta name="twitter:title" content="Dysomega">
-<meta name="twitter:description" content="A small belgian game company that makes unordinary games" />
-<meta name="twitter:creator" content="Ryunigia">
-<meta name="twitter:image" content="https://dysomega.com/images/DysomegaLogo_V2_64_Alpha.png" />
-<meta name="twitter:image:alt" content="DysomegaLogo" />
+  <meta name="description" content="A small Belgian indie game development studio. We make unordinary games.">
+  <meta property="og:title" content="Dysomega">
+  <meta property="og:url" content="https://dysomega.com/">
+  <meta property="og:image" content="https://dysomega.com/images/DysomegaLogo_V2_64_Alpha.png">
+  <meta property="og:description" content="A small Belgian game company that makes unordinary games">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:site" content="@Dysomega_Games">
+  <meta name="twitter:title" content="Dysomega">
+  <meta name="twitter:description" content="A small Belgian game company that makes unordinary games">
+  <meta name="twitter:creator" content="Ryunigia">
+  <link rel="icon" href="images/DysomegaLogo_V2_32_Alpha.png" type="image/png" sizes="32x32">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+    :root {
+      --bg: #0b0b0f;
+      --bg2: #111118;
+      --bg3: #17171f;
+      --accent: #e8a030;
+      --accent-dim: rgba(232, 160, 48, 0.15);
+      --accent-glow: rgba(232, 160, 48, 0.08);
+      --text: #e8e6df;
+      --text-muted: #8a8880;
+      --text-dim: #4a4845;
+      --border: rgba(255,255,255,0.07);
+      --border-accent: rgba(232,160,48,0.3);
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-sans: 'Syne', sans-serif;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.7;
+      overflow-x: hidden;
+    }
+
+    /* ── NAV ── */
+    nav {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2.5rem;
+      height: 64px;
+      background: rgba(11,11,15,0.85);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .nav-logo img {
+      width: 32px;
+      height: 32px;
+      image-rendering: pixelated;
+    }
+
+    .nav-logo span {
+      font-family: var(--font-mono);
+      font-size: 18px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+    }
+
+    .nav-links {
+      display: flex;
+      gap: 2rem;
+      list-style: none;
+    }
+
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      transition: color 0.2s;
+    }
+
+    .nav-links a:hover { color: var(--accent); }
+
+    .nav-toggle {
+      display: none;
+      background: none;
+      border: none;
+      cursor: pointer;
+      flex-direction: column;
+      gap: 5px;
+      padding: 4px;
+    }
+
+    .nav-toggle span {
+      display: block;
+      width: 22px;
+      height: 2px;
+      background: var(--text-muted);
+      transition: all 0.2s;
+    }
+
+    /* ── HERO ── */
+    #home {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      padding: 80px 2rem 4rem;
+    }
+
+    .hero-bg {
+      position: absolute;
+      inset: 0;
+      background: 
+        radial-gradient(ellipse 60% 50% at 50% 60%, rgba(232,160,48,0.05) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 40% at 20% 20%, rgba(232,160,48,0.03) 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .hero-grid {
+      position: absolute;
+      inset: 0;
+      background-image: 
+        linear-gradient(var(--border) 1px, transparent 1px),
+        linear-gradient(90deg, var(--border) 1px, transparent 1px);
+      background-size: 60px 60px;
+      mask-image: radial-gradient(ellipse 80% 80% at 50% 50%, black 30%, transparent 80%);
+      pointer-events: none;
+      opacity: 0.5;
+    }
+
+    .hero-content {
+      position: relative;
+      text-align: center;
+      max-width: 740px;
+    }
+
+    .hero-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: 1px solid var(--border-accent);
+      padding: 4px 14px;
+      border-radius: 2px;
+      margin-bottom: 2rem;
+      background: var(--accent-glow);
+    }
+
+    .hero-title {
+      font-size: clamp(3.5rem, 10vw, 7rem);
+      font-weight: 800;
+      line-height: 0.9;
+      letter-spacing: -0.02em;
+      color: var(--text);
+      margin-bottom: 1.5rem;
+    }
+
+    .hero-title .accent { color: var(--accent); }
+
+    .hero-sub {
+      font-size: 1.1rem;
+      color: var(--text-muted);
+      max-width: 480px;
+      margin: 0 auto 2.5rem;
+      font-weight: 400;
+    }
+
+    .hero-cta {
+      display: inline-flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+
+    .btn {
+      display: inline-block;
+      padding: 12px 28px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      text-decoration: none;
+      border-radius: 2px;
+      transition: all 0.2s;
+      cursor: pointer;
+      border: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: #0b0b0f;
+    }
+
+    .btn-primary:hover { background: #f0b040; transform: translateY(-1px); }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-muted);
+      border: 1px solid var(--border);
+    }
+
+    .btn-ghost:hover { border-color: var(--border-accent); color: var(--accent); }
+
+    .hero-scroll {
+      position: absolute;
+      bottom: 2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+      color: var(--text-dim);
+      font-family: var(--font-mono);
+      font-size: 11px;
+      letter-spacing: 0.15em;
+      text-decoration: none;
+      animation: bounce 2s ease-in-out infinite;
+    }
+
+    .scroll-line {
+      width: 1px;
+      height: 40px;
+      background: linear-gradient(to bottom, var(--text-dim), transparent);
+    }
+
+    @keyframes bounce {
+      0%, 100% { transform: translateX(-50%) translateY(0); }
+      50% { transform: translateX(-50%) translateY(6px); }
+    }
+
+    /* ── SECTIONS ── */
+    section {
+      padding: 6rem 2rem;
+    }
+
+    .container {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .section-label {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.25em;
+      text-transform: uppercase;
+      margin-bottom: 0.75rem;
+    }
+
+    .section-title {
+      font-size: clamp(2rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin-bottom: 1rem;
+    }
+
+    .divider {
+      width: 40px;
+      height: 2px;
+      background: var(--accent);
+      margin: 1.5rem 0;
+    }
+
+    /* ── FEATURE ── */
+    #feature {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .feature-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 5rem;
+      align-items: center;
+    }
+
+    .feature-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 1.5rem 0;
+    }
+
+    .badge {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      padding: 4px 10px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .badge.highlight {
+      border-color: var(--border-accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .feature-links {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 2rem;
+    }
+
+    .platform-link {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-weight: 600;
+      transition: all 0.2s;
+    }
+
+    .platform-link:hover {
+      border-color: var(--border-accent);
+      color: var(--accent);
+    }
+
+    .platform-link img { width: 20px; height: 20px; }
+
+    .feature-media {
+      position: relative;
+    }
+
+    .feature-media img {
+      width: 100%;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+      display: block;
+    }
+
+    .feature-media::before {
+      content: '';
+      position: absolute;
+      inset: -1px;
+      border-radius: 5px;
+      background: linear-gradient(135deg, var(--border-accent) 0%, transparent 60%);
+      z-index: -1;
+      opacity: 0.5;
+    }
+
+    /* ── SUBSCRIBE ── */
+    #giveaways {
+      background: var(--bg);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .subscribe-card {
+      max-width: 560px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    .subscribe-form {
+      display: flex;
+      gap: 0;
+      margin-top: 2rem;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      overflow: hidden;
+    }
+
+    .subscribe-form input {
+      flex: 1;
+      background: var(--bg2);
+      border: none;
+      padding: 14px 18px;
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 14px;
+      outline: none;
+    }
+
+    .subscribe-form input::placeholder { color: var(--text-dim); }
+
+    .subscribe-form button {
+      background: var(--accent);
+      color: #0b0b0f;
+      border: none;
+      padding: 14px 24px;
+      font-family: var(--font-sans);
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: background 0.2s;
+      white-space: nowrap;
+    }
+
+    .subscribe-form button:hover { background: #f0b040; }
+
+    /* ── GAMES ── */
+    #games {
+      background: var(--bg2);
+      border-top: 1px solid var(--border);
+    }
+
+    .filter-bar {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 3rem;
+    }
+
+    .filter-btn {
+      padding: 7px 18px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      background: transparent;
+      color: var(--text-muted);
+      font-family: var(--font-sans);
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .filter-btn:hover, .filter-btn.active {
+      border-color: var(--border-accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    .games-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 1.5rem;
+    }
+
+    .game-card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      overflow: hidden;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+
+    .game-card:hover {
+      border-color: var(--border-accent);
+      transform: translateY(-2px);
+    }
+
+    .game-card.hidden { display: none; }
+
+    .game-card-media {
+      width: 100%;
+      aspect-ratio: 16/9;
+      overflow: hidden;
+      background: #0b0b0f;
+    }
+
+    .game-card-media img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s;
+    }
+
+    .game-card:hover .game-card-media img { transform: scale(1.02); }
+
+    .game-card-body {
+      padding: 1.25rem 1.5rem 1.5rem;
+    }
+
+    .game-card-meta {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 0.75rem;
+    }
+
+    .game-card-title {
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: 0.5rem;
+    }
+
+    .game-card-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      margin-bottom: 1rem;
+    }
+
+    .game-card-specs {
+      margin-bottom: 1rem;
+    }
+
+    .spec-row {
+      display: flex;
+      gap: 8px;
+      font-size: 12px;
+      padding: 4px 0;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-muted);
+    }
+
+    .spec-row:last-child { border-bottom: none; }
+
+    .spec-label {
+      font-family: var(--font-mono);
+      color: var(--text-dim);
+      min-width: 80px;
+    }
+
+    .game-card-links {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-top: 1rem;
+    }
+
+    /* ── FOOTER ── */
+    footer {
+      background: var(--bg);
+      border-top: 1px solid var(--border);
+      padding: 4rem 2rem 2rem;
+    }
+
+    .footer-inner {
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    .footer-top {
+      display: grid;
+      grid-template-columns: 2fr 1fr 1fr;
+      gap: 4rem;
+      padding-bottom: 3rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 2rem;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 1rem;
+    }
+
+    .footer-brand img { width: 28px; image-rendering: pixelated; }
+
+    .footer-brand span {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+    }
+
+    .footer-desc {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      max-width: 300px;
+    }
+
+    .footer-col h4 {
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: var(--text-dim);
+      margin-bottom: 1.25rem;
+    }
+
+    .footer-col a {
+      display: block;
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 0.9rem;
+      margin-bottom: 0.5rem;
+      transition: color 0.2s;
+    }
+
+    .footer-col a:hover { color: var(--accent); }
+
+    .social-links {
+      display: flex;
+      gap: 12px;
+    }
+
+    .social-link {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      transition: all 0.2s;
+      text-decoration: none;
+    }
+
+    .social-link:hover {
+      border-color: var(--border-accent);
+      background: var(--accent-glow);
+    }
+
+    .social-link img { width: 16px; height: 16px; filter: brightness(0.6); transition: filter 0.2s; }
+    .social-link:hover img { filter: brightness(1) sepia(1) saturate(5) hue-rotate(5deg); }
+
+    .footer-bottom {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+
+    .footer-copy {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+    }
+
+    /* ── ANIMATIONS ── */
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(24px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .fade-up {
+      opacity: 0;
+      animation: fadeUp 0.6s ease forwards;
+    }
+
+    .fade-up-1 { animation-delay: 0.1s; }
+    .fade-up-2 { animation-delay: 0.25s; }
+    .fade-up-3 { animation-delay: 0.4s; }
+    .fade-up-4 { animation-delay: 0.55s; }
+
+    /* ── RESPONSIVE ── */
+    @media (max-width: 768px) {
+      nav { padding: 0 1.25rem; }
+
+      .nav-links { display: none; }
+      .nav-links.open {
+        display: flex;
+        flex-direction: column;
+        position: fixed;
+        top: 64px; left: 0; right: 0;
+        background: rgba(11,11,15,0.97);
+        padding: 2rem 1.5rem;
+        border-bottom: 1px solid var(--border);
+        gap: 1.25rem;
+      }
+
+      .nav-toggle { display: flex; }
+
+      .feature-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+      .feature-media { order: -1; }
+
+      .footer-top { grid-template-columns: 1fr; gap: 2rem; }
+
+      .footer-bottom { flex-direction: column; align-items: flex-start; }
+
+      section { padding: 4rem 1.25rem; }
+    }
+  </style>
 </head>
-<body> <!-- START OF BODY -->
-<!-- NAVIGATION-->
-<nav class="navbar navbar-expand-sm bg-dark navbar-dark navbarDys AccentBackColour">
-  <a class="navbar-brand" href="https://www.w3schools.com/bootstrap4/trybs_template1.htm#">
-  <img src="images/DysomegaLogo_V2_64_Alpha.png" alt="DysLogo" class=""><!--Dysomega--></img>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="#home">
+    <img src="images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega Logo">
+    <span>DYSOMEGA</span>
   </a>
-  <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#collapsibleNavbar">
-    <span class="navbar-toggler-icon"></span>
+  <button class="nav-toggle" id="navToggle" aria-label="Toggle navigation">
+    <span></span><span></span><span></span>
   </button>
-  <div class="collapse navbar-collapse" id="collapsibleNavbar">
-    <ul class="navbar-nav">
-      <li class="nav-item">
-        <a class="nav-link" href="#home">Home</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#feature">Feature</a>
-      </li>
-      <li class="nav-item">
-        <a class="nav-link" href="#giveaways">Giveaways</a>
-      </li>
-	  <li class="nav-item">
-        <a class="nav-link" href="#games">Games</a>
-      </li>
-	  <li class="nav-item">
-        <a class="nav-link" href="#contact">Contact</a>
-      </li> 	  
-    </ul>
-  </div>  
+  <ul class="nav-links" id="navLinks">
+    <li><a href="#home">Home</a></li>
+    <li><a href="#feature">Feature</a></li>
+    <li><a href="#giveaways">Subscribe</a></li>
+    <li><a href="#games">Games</a></li>
+    <li><a href="#contact">Contact</a></li>
+  </ul>
 </nav>
-<!-- MAGIC HERE-->
-<div class="container-fluid" id="home">
-	<div class="InnerContainer">
-		<div class="MagicWow" id="magic"></div>
-		<canvas id="myCanvas"></canvas>
-		<script src="javascript/magic.js"></script>
-	</div>
-</div>
-<!-- GAME FEATURE-->
-<div class="container-fluid" id="feature">
-	<div class="InnerContainer">
-		<div class="row">
-			<div class="col">
-				<h3 class="">Chuture</h3>
-				<p class="AccentTextColour">2D survival game.. on a train<p>
-			</div>
-		</div>
-		<div class="row">
-			<div class="col-sm">
-				<h4>Build, craft and fight on a time travelling train</h4>
-				<p>Chuture is 2D game in the dragongear engine (custom 2D engine). To complete every level in the game your goal is to catch up to the boss of the level by speeding up your train. The easiest way to do so is to add more engines or upgrade existing ones. Once you catched up the exit will open and you will be able to escape/clear the level, however if you go to slow the boss will escape and you will have to restart.</p>
-			</div>
-			<div class="Feature col-sm">
-				<img src="images/Building.gif" alt=" " class="img-responsive">
-				<div class="">
-					<!--<img src="images/Transport.gif" alt=" " class="img-responsive">-->
-				</div>
-			</div>
-			<div class="clearfix"> </div>
-		</div>
-		<i> More details:</i>
-		<div class="row">
-			<div class="col">
-				<a href="https://dysomega.itch.io/chuture"><img src="images/icons/itchio.png" alt="itchLogo"></a>
-				<a href="https://gamejolt.com/dashboard/games/330268"><img src="images/icons/gamejolt.png" alt="gamejoltLogo"></a>
-			</div>
-		</div>
-		<div class="row">
-			<div class="col-5">
-				<a href="https://www.indiedb.com/games/chuture" title="View Chuture on Indie DB" target="_blank"><img src="https://button.indiedb.com/popularity/medium/games/66376.png" alt="Chuture" /></a>
-			</div>
-		</div>
-		<i> Give feedback:</i>
-		<div class="row">
-			<div class="col">
-				<a href="https://www.stomt.com/chuture" style="background-color: white;"><img src="images/icons/stomt.png" alt="stomtLogo"></a>
-			</div>
-		</div>
-	</div>
-</div>
-<div id="wave"> </div>
-<div class="container-fluid AccentBackColour"  style="padding-top: 16px;">
-	<div class ="InnerContainer-sm" id="giveaways">
-		<div class="row">
-			<div class="col">
-				<h3 class="">Subscribe</h3>
-				<p class="AccentTextColour">Want to be notified for a big release? or giveaways~</p>
-			</div>
-		</div>
-		<div class="">
-			<form action="https://dysomega.us18.list-manage.com/subscribe/post?u=5100a2b8c10a90cd272734269&amp;id=1b7af3746b" method="post" id="mc-embedded-subscribe-form" name="mc-embedded-subscribe-form" class="validate" target="_blank" novalidate>
-			<div class="row">
-				<div class="col">
-					<div class="input-group mb-3" for="mce-EMAIL">
-						<input type="email" class="form-control" name="EMAIL" placeholder="Your Email">
-						<div class="input-group-append">
-						  <span class="input-group-text">@example.com</span>
-						</div>
-					</div>
-				</div>
-			</div>
-			<div class="row">
-				<div class="col-sm-9">
-					<div class="input-group mb-3" for="mce-FNAME">
-						<div class="input-group-prepend">
-							<span class="input-group-text">@</span>
-						</div>
-						<input type="text" name="FNAME" id="mce-FNAME" class="form-control" placeholder="Username">
-					</div>
-				</div>
-				<div class="col">
-						<button type="submit" value="Subscribe" name="subscribe" id="mc-embedded-subscribe" class="btn btn-primary bg-dark">Subscribe</button>
-				</div>
-			</div>
-				<!-- real people should not fill this in and expect good things - do not remove this or risk form bot signups-->
-			<div style="position: absolute; left: -5000px;" aria-hidden="true"><input type="text" name="b_5100a2b8c10a90cd272734269_1b7af3746b" tabindex="-1" value=""></div>
-			</div>
-			<!--<textarea name="Message" placeholder="Your Message" required=""></textarea>-->
-			<div class="row">
-			</div>
-			</form>
-			<div class="clearfix"> </div>
-		</div>
-	</div>
-</div>
-<div class="container-fluid">
-	<div class="InnerContainer" id="games">
-		<h3>Games</h2>
-			<div id="myBtnContainer">
-			  <button class="btn btnBetter" onclick="filterSelection('all')"> Show all</button>
-			  <button class="btn active btnBetter" onclick="filterSelection('games')"> Games</button>
-			  <button class="btn btnBetter" onclick="filterSelection('tools')"> Tools</button>
-			  <button class="btn btnBetter" onclick="filterSelection('prototypes')"> Prototypes</button>
-			</div>
-		<!-- Portfolio Gallery Grid -->
-		<div class="row">
-			<div class="column games">
-				<div class="content">
-					<div class="row">
-						<div class="col-sm">
-							<img src="images/Building.gif" alt="ChutureIMG" style="width:100%">
-						</div>
-						<div class="col">
-								<h4>Chuture</h4>
-								<p>Build, craft and fight while on a train travelling through time and space!</p>
-								<li> Platforms: Windows </li>
-								<li> Genre: Crafting Survival </li>
-								<li> Engine: Custom/Dragongear sdl2.0 </li>
-								<li> State: Alpha </li>
-								
-							<div class="row col">
-								<a href="https://dysomega.itch.io/chuture"><img src="images/icons/itchio.png" alt="itchLogo"></a>
-								<a href="https://gamejolt.com/dashboard/games/330268"><img src="images/icons/gamejolt.png" alt="gamejoltLogo"></a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="row">
-			<div class="column tools">
-				<div class="content">
-					<div class="row">
-						<div class="col-sm">
-							<img src="images/SpriteVoxels.gif" alt="VoxelsIMG" style="width:100%">
-						</div>
-						<div class="col">
-								<h4>SpriteVoxels</h4>
-								<p>Create simple voxels based objects out of sprites in unity</p>
-								<li> Engine: Unity </li>
-								<li> State: Completed </li>
-								
-							<div class="row col">
-								<a href="https://dysomega.itch.io/spritevoxels"><img src="images/icons/itchio.png" alt="itchLogo"></a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		<div class="row">
-			<div class="column prototypes">
-				<div class="content">
-					<div class="row">
-						<div class="col-sm">
-							<img src="images/PaintingVortex.gif" alt="VortexIMG" style="width:100%">
-						</div>
-						<div class="col">
-								<h4>Painting with vortexes</h4>
-								<p>Draw something with vortexes</p>
-								<li> Platforms: Windows, Linux, Html5 </li>
-								<li> Genre: Simulation </li>
-								<li> Engine: Unity </li>
-								<li> State: Prototype, gamejam </li>
-								
-							<div class="row col">
-								<a href="https://dysomega.itch.io/paintingwithvortex" alt="itchLogo"><img src="images/icons/itchio.png" alt="itchLogo"></a>
-								<a href="https://gamejolt.com/dashboard/games/330268"><img src="images/icons/gamejolt.png" alt="gamejoltLogo"></a>
-								<a href="https://www.kongregate.com/games/Dysomega/painting-with-vortexes"><img src="images/icons/kongregate.png" alt="kongregatelogo"></a>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</div>
-		<!-- END GRID -->
-	</div>
-</div>
-<!-- Footer -->
-<footer class="page-footer font-small bg-secondary mt-4" id="contact">
 
-  <div class="bg-dark">
-    <div class="container">
+<!-- HERO -->
+<section id="home">
+  <div class="hero-bg"></div>
+  <div class="hero-grid"></div>
+  <div class="hero-content">
+    <div class="hero-tag fade-up fade-up-1">Small studio · Big ideas</div>
+    <h1 class="hero-title fade-up fade-up-2">
+      DYS<span class="accent">OMEGA</span>
+    </h1>
+    <p class="hero-sub fade-up fade-up-3">
+      A small Belgian indie game studio. We make unordinary games.
+    </p>
+    <div class="hero-cta fade-up fade-up-4">
+      <a href="#games" class="btn btn-primary">See Our Games</a>
+      <a href="https://dysomega.itch.io" class="btn btn-ghost">itch.io →</a>
+    </div>
+  </div>
+  <a href="#feature" class="hero-scroll">
+    <div class="scroll-line"></div>
+    scroll
+  </a>
+</section>
 
-      <!-- row-->
-      <div class="row py-4 align-items-center">
-
-        <!-- column -->
-        <div class="col-7">
-          <h6 class="mb-0">Get connected with us on social networks!</h6>
+<!-- FEATURE -->
+<section id="feature">
+  <div class="container">
+    <div class="feature-grid">
+      <div>
+        <div class="section-label">Featured Game</div>
+        <h2 class="section-title">Chuture</h2>
+        <div class="divider"></div>
+        <p style="color: var(--text-muted); margin-bottom: 1rem;">
+          Build, craft and fight while riding a time-travelling train through space. 
+          Speed up your engines to outrun the level boss — or watch them escape and start over.
+        </p>
+        <p style="color: var(--text-muted);">
+          A 2D survival crafting game built on Dragongear, our custom engine.
+        </p>
+        <div class="feature-badges">
+          <span class="badge highlight">Alpha</span>
+          <span class="badge">Windows</span>
+          <span class="badge">Dragongear / SDL2</span>
+          <span class="badge">Survival · Crafting</span>
         </div>
-        <!-- column -->
-
-        <!-- column -->
-        <div class="col-5">
-		<a class="socialIcons" href="https://twitter.com/Dysomega_Games">
-			<img src="https://cdn2.iconfinder.com/data/icons/black-white-social-media/32/twitter_online_social_media-128.png" alt="twt">
-		</a>
-		<a class="socialIcons" href="https://www.youtube.com/channel/UCP8xRBA5Zh4rWrqi7jsxyBg">
-			<img src="https://cdn2.iconfinder.com/data/icons/black-white-social-media/32/youtube_online_social_media_tube-128.png" alt="yt">
-		</a>
-		<a class="socialIcons" href="https://www.facebook.com/Dysomega">
-			<img src="https://cdn2.iconfinder.com/data/icons/black-white-social-media/32/online_social_media_facebook-128.png" alt="fb">
-		</a>
+        <div class="feature-links">
+          <a href="https://dysomega.itch.io/chuture" class="platform-link">
+            <img src="images/icons/itchio.png" alt=""> itch.io
+          </a>
+          <a href="https://gamejolt.com/dashboard/games/330268" class="platform-link">
+            <img src="images/icons/gamejolt.png" alt=""> GameJolt
+          </a>
+          <a href="https://www.indiedb.com/games/chuture" class="platform-link" target="_blank">
+            IndieDB →
+          </a>
         </div>
-        <!-- column -->
-
       </div>
-      <!-- row-->
+      <div class="feature-media">
+        <img src="images/Building.gif" alt="Chuture gameplay screenshot">
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SUBSCRIBE -->
+<section id="giveaways">
+  <div class="container">
+    <div class="subscribe-card">
+      <div class="section-label" style="text-align:center;">Stay in the loop</div>
+      <h2 class="section-title" style="text-align:center;">Subscribe</h2>
+      <div class="divider" style="margin: 1.5rem auto;"></div>
+      <p style="color: var(--text-muted); text-align: center;">
+        Get notified about big releases, updates, and giveaways.
+      </p>
+      <form action="https://dysomega.us18.list-manage.com/subscribe/post?u=5100a2b8c10a90cd272734269&amp;id=1b7af3746b" method="post" target="_blank" novalidate>
+        <div class="subscribe-form">
+          <input type="email" name="EMAIL" placeholder="your@email.com" required>
+          <button type="submit">Subscribe</button>
+        </div>
+        <div style="position:absolute;left:-5000px;" aria-hidden="true">
+          <input type="text" name="b_5100a2b8c10a90cd272734269_1b7af3746b" tabindex="-1" value="">
+        </div>
+      </form>
+    </div>
+  </div>
+</section>
+
+<!-- GAMES -->
+<section id="games">
+  <div class="container">
+    <div class="section-label">Our Work</div>
+    <h2 class="section-title">Games & Tools</h2>
+    <div class="divider"></div>
+
+    <div class="filter-bar">
+      <button class="filter-btn active" data-filter="all">All</button>
+      <button class="filter-btn" data-filter="games">Games</button>
+      <button class="filter-btn" data-filter="tools">Tools</button>
+      <button class="filter-btn" data-filter="prototypes">Prototypes</button>
+    </div>
+
+    <div class="games-grid">
+
+      <!-- Chuture -->
+      <div class="game-card" data-category="games">
+        <div class="game-card-media">
+          <img src="images/Building.gif" alt="Chuture gameplay">
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-meta">
+            <span class="badge highlight">Alpha</span>
+            <span class="badge">Game</span>
+          </div>
+          <h3 class="game-card-title">Chuture</h3>
+          <p class="game-card-desc">Build, craft and fight while on a time-travelling train.</p>
+          <div class="game-card-specs">
+            <div class="spec-row"><span class="spec-label">Platform</span><span>Windows</span></div>
+            <div class="spec-row"><span class="spec-label">Genre</span><span>Crafting · Survival</span></div>
+            <div class="spec-row"><span class="spec-label">Engine</span><span>Dragongear / SDL2</span></div>
+          </div>
+          <div class="game-card-links">
+            <a href="https://dysomega.itch.io/chuture" class="platform-link">
+              <img src="images/icons/itchio.png" alt=""> itch.io
+            </a>
+            <a href="https://gamejolt.com/dashboard/games/330268" class="platform-link">
+              <img src="images/icons/gamejolt.png" alt=""> GameJolt
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- SpriteVoxels -->
+      <div class="game-card" data-category="tools">
+        <div class="game-card-media">
+          <img src="images/SpriteVoxels.gif" alt="SpriteVoxels tool">
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-meta">
+            <span class="badge" style="color: #5fc87a; border-color: rgba(95,200,122,0.3);">Completed</span>
+            <span class="badge">Tool</span>
+          </div>
+          <h3 class="game-card-title">SpriteVoxels</h3>
+          <p class="game-card-desc">Create voxel-based objects from sprites, inside Unity.</p>
+          <div class="game-card-specs">
+            <div class="spec-row"><span class="spec-label">Engine</span><span>Unity</span></div>
+          </div>
+          <div class="game-card-links">
+            <a href="https://dysomega.itch.io/spritevoxels" class="platform-link">
+              <img src="images/icons/itchio.png" alt=""> itch.io
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <!-- Painting with Vortexes -->
+      <div class="game-card" data-category="prototypes">
+        <div class="game-card-media">
+          <img src="images/PaintingVortex.gif" alt="Painting with Vortexes">
+        </div>
+        <div class="game-card-body">
+          <div class="game-card-meta">
+            <span class="badge" style="color: #8a8880; border-color: rgba(138,136,128,0.3);">Prototype</span>
+            <span class="badge">Game Jam</span>
+          </div>
+          <h3 class="game-card-title">Painting with Vortexes</h3>
+          <p class="game-card-desc">Draw abstract art using interactive fluid vortexes.</p>
+          <div class="game-card-specs">
+            <div class="spec-row"><span class="spec-label">Platform</span><span>Windows · Linux · HTML5</span></div>
+            <div class="spec-row"><span class="spec-label">Genre</span><span>Simulation</span></div>
+            <div class="spec-row"><span class="spec-label">Engine</span><span>Unity</span></div>
+          </div>
+          <div class="game-card-links">
+            <a href="https://dysomega.itch.io/paintingwithvortex" class="platform-link">
+              <img src="images/icons/itchio.png" alt=""> itch.io
+            </a>
+            <a href="https://gamejolt.com/dashboard/games/330268" class="platform-link">
+              <img src="images/icons/gamejolt.png" alt=""> GameJolt
+            </a>
+          </div>
+        </div>
+      </div>
 
     </div>
   </div>
+</section>
 
-  <!-- Links -->
-  <div class="container text-center text-md-left mt-5">
-
-	<!-- row -->
-	<div class="row mt-3">
-
-	  <!-- column -->
-	  <div class="col-md-3 col-lg-4 col-xl-3 mx-auto mb-4">
-
-		<!-- Content -->
-		<h6 class="text-uppercase font-weight-bold">Dysomega</h6>
-		<hr class="accent-2 mb-4 mt-0 d-inline-block mx-auto" style="width: 60px;">
-		<p>A small belgian game company that makes unordinary games</p>
-
-	  </div>
-	  
-	  <!-- column -->
-	  <div class="col-md-4 col-lg-3 col-xl-3 mx-auto mb-md-0 mb-4">
-
-		<!-- Links -->
-		<h6 class="text-uppercase font-weight-bold">Contact</h6>
-		<hr class="accent-2 mb-4 mt-0 d-inline-block mx-auto" style="width: 60px;">
-		<p>
-		  <i class=""></i> Kuurne, West-flanders, Belgium</p>
-		<p>
-		  <i class=""></i> feedback@dysomega.com</p>
-	  </div>
-
-	</div>
-
+<!-- FOOTER -->
+<footer id="contact">
+  <div class="footer-inner">
+    <div class="footer-top">
+      <div>
+        <div class="footer-brand">
+          <img src="images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega Logo">
+          <span>DYSOMEGA</span>
+        </div>
+        <p class="footer-desc">A small Belgian indie game studio. We make unordinary games.</p>
+        <div class="social-links" style="margin-top: 1.5rem;">
+          <a href="https://twitter.com/Dysomega_Games" class="social-link" aria-label="Twitter">
+            <img src="https://cdn2.iconfinder.com/data/icons/black-white-social-media/32/twitter_online_social_media-128.png" alt="Twitter">
+          </a>
+          <a href="https://www.youtube.com/channel/UCP8xRBA5Zh4rWrqi7jsxyBg" class="social-link" aria-label="YouTube">
+            <img src="https://cdn2.iconfinder.com/data/icons/black-white-social-media/32/youtube_online_social_media_tube-128.png" alt="YouTube">
+          </a>
+          <a href="https://www.facebook.com/Dysomega" class="social-link" aria-label="Facebook">
+            <img src="https://cdn2.iconfinder.com/data/icons/black-white-social-media/32/online_social_media_facebook-128.png" alt="Facebook">
+          </a>
+        </div>
+      </div>
+      <div class="footer-col">
+        <h4>Navigate</h4>
+        <a href="#home">Home</a>
+        <a href="#feature">Feature</a>
+        <a href="#games">Games</a>
+        <a href="#giveaways">Subscribe</a>
+      </div>
+      <div class="footer-col">
+        <h4>Contact</h4>
+        <a href="mailto:feedback@dysomega.com">feedback@dysomega.com</a>
+        <span style="color: var(--text-dim); font-size: 0.875rem;">Kuurne, Belgium</span>
+      </div>
+    </div>
+    <div class="footer-bottom">
+      <span class="footer-copy">© 2018–2026 DYSOMEGA. ALL RIGHTS RESERVED.</span>
+      <span class="footer-copy" style="color: var(--text-dim);">Made in Belgium 🇧🇪</span>
+    </div>
   </div>
-
-  <!-- Copyright -->
-  <div class="text-center py-3 bg-dark" style="">
-    <p>© 2018 Dysomega. All Rights Reserved</p>
-  </div>
-  <!-- Copyright -->
 </footer>
 
-<!-- java -->
-<script type="text/javascript">
-filterSelection("games") // Execute the function and show all columns
-</script>
-<script type='text/javascript'>(function($) {window.fnames = new Array(); window.ftypes = new Array();fnames[0]='EMAIL';ftypes[0]='email';fnames[1]='FNAME';ftypes[1]='text';}(jQuery));var $mcj = jQuery.noConflict(true);
-</script>
-<script type='text/javascript'>
-// Add active class to the current button (highlight it)
-var btnContainer = document.getElementById("myBtnContainer");
-if (!btnContainer)
-	console.log("myBtnContainer not found");
-var btns = btnContainer.getElementsByClassName("btn");
-for (var i = 0; i < btns.length; i++) {
-  btns[i].addEventListener("click", function(){
-    var current = document.getElementsByClassName("active");
-    current[0].className = current[0].className.replace(" active", "");
-    this.className += " active";
-  });
-}
-</script>
-<?php 
-	date_default_timezone_set('UTC');
-	$counter_name = "counter.txt";
-	$handle = fopen($counter_name, "r");
-	$date = date('F Y');
-	if(!$handle)
-	{ 
-		$_SESSION['hasVisited']="yes";
-		$handle = fopen($counter_name, "w");
-		fwrite($handle, 1  . '\n');
-		fwrite($handle, $date . '\n');
-		fwrite($handle, 1  . '\n');
-		echo" <i> Welcome first vistor </i> " ; 
-		fclose ($handle) ; 
-	} 
-	else 
-	{ 
-		$handle = fopen($counter_name, "r");
-		$filesize = filesize($counter_name);
-		$filetext = fread($handle, $filesize);
-		fclose ($handle);
-		//substr(string,start,length)
-		// get alltime
-		$nextpos = strpos($filetext, '\n');
-		$endAllCount = substr($filetext, 0, $nextpos);
-		$filetext = substr($filetext, $nextpos + 2, $filesize);
-		$counter = (int) $endAllCount;
-		
-		// check month
-		$nextpos = strpos($filetext, '\n');
-		$endCurrentMonth = substr($filetext, 0, $nextpos);
-		$filetext = substr($filetext, $nextpos + 2, $filesize);
-		$counterMonth = 0;
-		// check if month is same?
-		if($date == $endCurrentMonth)
-		{
-			$nextpos = strpos($filetext, '\n');
-			$endCurrentCount = substr($filetext, 0, $nextpos);
-			$counterMonth = (int) $endCurrentCount;
-			//$filetext = substr($filetext, $nextpos + 2, $filesize);
-		}
-		
-		
-		
-		
-		if(!isset($_SESSION['hasVisited']))
-		{
-			$_SESSION['hasVisited']="yes";
-			$counter++;
-			$counterMonth++;
-			$handle = fopen($counter_name, "w+" ); 
-			fwrite($handle, $counter . '\n') ; 
-			fwrite($handle, $date . '\n');
-			fwrite($handle, $counterMonth . '\n') ;
-			fclose ($handle) ; 
-		}
+<script>
+  // Nav toggle
+  const toggle = document.getElementById('navToggle');
+  const links = document.getElementById('navLinks');
+  toggle.addEventListener('click', () => links.classList.toggle('open'));
+  links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
 
-		//$counter = (int)fread($handle,20); 
-		//$counterMonth = (int)fread($handle,20);  
-		echo" <i> Welcome visitor nr.". $counter . " with " . $counterMonth . " visting in the month of " . $date . "</i> " ;
-	} 
-	exit();
- ?>
-</body></html>
+  // Game filter
+  const filterBtns = document.querySelectorAll('.filter-btn');
+  const cards = document.querySelectorAll('.game-card');
+
+  filterBtns.forEach(btn => {
+    btn.addEventListener('click', () => {
+      filterBtns.forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const f = btn.dataset.filter;
+      cards.forEach(card => {
+        if (f === 'all' || card.dataset.category === f) {
+          card.classList.remove('hidden');
+        } else {
+          card.classList.add('hidden');
+        }
+      });
+    });
+  });
+
+  // Scroll-based nav active state
+  const sections = document.querySelectorAll('section[id], footer[id]');
+  const navAnchors = document.querySelectorAll('.nav-links a');
+
+  const observer = new IntersectionObserver(entries => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        navAnchors.forEach(a => {
+          a.style.color = a.getAttribute('href') === '#' + entry.target.id
+            ? 'var(--accent)' : '';
+        });
+      }
+    });
+  }, { threshold: 0.4 });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+</body>
+</html>
