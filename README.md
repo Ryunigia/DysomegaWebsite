@@ -1,2 +1,0 @@
-# DysomegaWebsite
-A beatifull website
