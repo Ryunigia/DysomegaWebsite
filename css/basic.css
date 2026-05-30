@@ -1,0 +1,226 @@
+.outlineme
+{
+    color: white;
+    text-shadow:
+    -2px -2px 0 #000,
+    2px -2px 0 #000,
+    -2px 2px 0 #000,
+    2px 2px 0 #000;
+    
+}
+.clearfix 
+{
+    overflow: auto;
+}
+.clearfix::after 
+{
+    content: "";
+    clear: both;
+    display: table;
+}
+
+body
+{
+	background-color: #252525;
+}
+p, i
+{
+	color: lightGray;
+}
+canvas
+{
+	/*border-style: dashed;*/
+	width: 100%;
+	margin-bottom: -17.5%;
+}
+h1,h2,h3,h4,h5,h6
+{
+	color: white;
+}
+
+.Feature img
+{
+	border-style: solid;
+	color: white;
+	width: 100%;
+}
+.AccentBackColour
+{
+	background-color: #365c84;
+}
+.AccentTextColour
+{
+	color: Orange;
+}
+.InnerContainer
+{
+	max-width: 1080px;
+	padding: 10px;
+	margin:auto;
+}
+.InnerContainer-sm
+{
+	max-width: 540px;
+	padding: 10px;
+	margin:auto;
+}
+.MagicWow
+{
+	
+}
+#wave 
+{
+
+	position: relative;
+	height: 40px;
+	width: 100%;
+	/*background: #252525;*/
+	/*overflow: hidden;*/
+}
+#wave:before 
+{
+    content: "";
+    display: block;
+    position: absolute;
+    border-radius: 100% 50%;
+    width: 55%;
+    height: 66px;
+    background-color: #365c84;
+    right: 0px;
+    top: 15px;
+}
+#wave:after 
+{
+    content: "";
+    display: block;
+    position: absolute;
+    border-radius: 100% 28%;
+    width: 55%;
+    height: 66px;
+    background-color: #252525;
+    left: -5px;
+    top: -1px;
+}
+.HeaderBar
+{
+	Display: Block;
+	position: fixed;
+	width: 720;
+	background-color: teal;
+    opacity: 0.2;
+}
+
+.HeaderBar li
+{
+	float: left;
+	list-style: none;
+    margin-left: 15;
+	padding-top: 4;
+	opacity: 1.0;
+}
+.HeaderBar ul
+{
+	display: inline;
+	padding-left: 0;
+}
+.HeaderBar h1
+{
+	float: left;
+	display:inline;
+	margin: 0;
+	opacity: 1.0;
+}
+
+.Space
+{
+	margin: 20;
+}
+
+/* custom navbar */
+.navbarDys
+{
+	margin-top: -16px;
+    height: 80px;
+}
+/* socials */
+.socialIcons img
+{
+	height:32px;
+	width:32px;
+}
+/* socials */
+.socialIcons
+{
+
+}
+.socialIcons li
+{
+	float:right;
+	list-style: none;
+}
+.socialIcons ul
+{
+    list-style-type: none;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+}
+
+/* The switch - the box around the slider */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 48px;
+  height: 16px;
+}
+
+/* Hide default HTML checkbox */
+.switch input {display:none;}
+
+/* The slider */
+.sliderSwitch{
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+.sliderSwitch:before {
+  position: absolute;
+  content: "";
+  height: 12px;
+  width: 12px;
+  left: 4px;
+  bottom: 2px;
+  background-color: white;
+  -webkit-transition: .4s;
+  transition: .4s;
+}
+
+input:checked + .sliderSwitch {
+  background-color: #ff5000;
+}
+
+input:focus + .sliderSwitch {
+  box-shadow: 0 0 1px #ff5000;
+}
+
+input:checked + .sliderSwitch:before {
+  -webkit-transform: translateX(14px);
+  -ms-transform: translateX(14px);
+  transform: translateX(26px);
+}
+
+/* Rounded sliders */
+.sliderSwitch.round {
+  border-radius: 34px;
+}
+
+.sliderSwitch.round:before {
+  border-radius: 50%;
+}
