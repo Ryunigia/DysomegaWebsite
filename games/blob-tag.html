@@ -1,58 +1,211 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <title>Blob Tag — Dysomega</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&display=swap"
+    rel="stylesheet">
   <link rel="icon" href="../images/DysomegaLogo_V2_32_Alpha.png" type="image/png" sizes="32x32">
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-6028793745205666"
-     crossorigin="anonymous"></script>
+    crossorigin="anonymous"></script>
   <style>
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    *,
+    *::before,
+    *::after {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
     :root {
-      --bg: #0b0b0f; --bg2: #111118; --bg3: #17171f;
-      --accent: #e8a030; --accent-glow: rgba(232,160,48,0.08);
-      --text: #e8e6df; --text-muted: #8a8880; --text-dim: #4a4845;
-      --border: rgba(255,255,255,0.07); --border-accent: rgba(232,160,48,0.3);
-      --font-mono: 'Share Tech Mono', monospace; --font-sans: 'Syne', sans-serif;
+      --bg: #0b0b0f;
+      --bg2: #111118;
+      --bg3: #17171f;
+      --accent: #AAAAAA;
+      --accent-glow: rgba(232, 160, 48, 0.08);
+      --text: #e8e6df;
+      --text-muted: #8a8880;
+      --text-dim: #4a4845;
+      --border: rgba(255, 255, 255, 0.07);
+      --border-accent: rgba(232, 160, 48, 0.3);
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-sans: 'Syne', sans-serif;
       --banner-h: 56px;
     }
-    html { scroll-behavior: smooth; }
-    body { background: var(--bg); color: var(--text); font-family: var(--font-sans); min-height: 100vh; display: flex; flex-direction: column; /* room for sticky banner */ padding-bottom: var(--banner-h); }
+
+    html {
+      scroll-behavior: smooth;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      /* room for sticky banner */
+      padding-bottom: var(--banner-h);
+    }
 
     /* NAV */
-    nav { display: flex; align-items: center; justify-content: space-between; padding: 0 2rem; height: 56px; background: rgba(11,11,15,0.95); border-bottom: 1px solid var(--border); flex-shrink: 0; }
-    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
-    .nav-logo img { width: 26px; image-rendering: pixelated; }
-    .nav-logo span { font-family: var(--font-mono); font-size: 15px; color: var(--accent); letter-spacing: 0.15em; }
-    .nav-back { display: flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; transition: color 0.2s; }
-    .nav-back:hover { color: var(--accent); }
+    nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 2rem;
+      height: 56px;
+      background: rgba(11, 11, 15, 0.95);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+
+    .nav-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .nav-logo img {
+      width: 26px;
+      image-rendering: pixelated;
+    }
+
+    .nav-logo span {
+      font-family: var(--font-mono);
+      font-size: 15px;
+      color: var(--accent);
+      letter-spacing: 0.15em;
+    }
+
+    .nav-back {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+
+    .nav-back:hover {
+      color: var(--accent);
+    }
 
     /* MAIN */
-    main { flex: 1; display: flex; flex-direction: column; align-items: center; padding: 2.5rem 1.5rem 3rem; gap: 0; }
+    main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2.5rem 1.5rem 3rem;
+      gap: 0;
+    }
 
-    .page-header { text-align: center; margin-bottom: 2rem; }
-    .page-tag { display: inline-block; font-family: var(--font-mono); font-size: 11px; color: var(--accent); letter-spacing: 0.2em; text-transform: uppercase; border: 1px solid var(--border-accent); padding: 3px 12px; border-radius: 2px; background: var(--accent-glow); margin-bottom: 1rem; }
-    .page-title { font-size: clamp(1.75rem, 5vw, 3rem); font-weight: 800; letter-spacing: -0.02em; line-height: 1; margin-bottom: 0.5rem; }
-    .page-sub { color: var(--text-muted); font-size: 0.9rem; }
+    .page-header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+
+    .page-tag {
+      display: inline-block;
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--accent);
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      border: 1px solid var(--border-accent);
+      padding: 3px 12px;
+      border-radius: 2px;
+      background: var(--accent-glow);
+      margin-bottom: 1rem;
+    }
+
+    .page-title {
+      font-size: clamp(1.75rem, 5vw, 3rem);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      margin-bottom: 0.5rem;
+    }
+
+    .page-sub {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
 
     /* GAME WRAPPER */
-    .game-wrapper { width: 100%; max-width: 720px; background: var(--bg2); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-    .game-inner { padding: 1.25rem; }
+    .game-wrapper {
+      width: 100%;
+      max-width: 720px;
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .game-inner {
+      padding: 1.25rem;
+    }
 
     /* HOW TO PLAY */
-    .how-to { width: 100%; max-width: 720px; margin-top: 1.25rem; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 0.75rem; }
-    .tip { background: var(--bg2); border: 1px solid var(--border); border-radius: 6px; padding: 0.875rem 1rem; }
-    .tip-icon { font-size: 1.1rem; margin-bottom: 0.4rem; }
-    .tip h4 { font-size: 12px; font-weight: 700; margin-bottom: 0.2rem; }
-    .tip p { font-size: 11px; color: var(--text-muted); line-height: 1.4; }
+    .how-to {
+      width: 100%;
+      max-width: 720px;
+      margin-top: 1.25rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 0.75rem;
+    }
+
+    .tip {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 0.875rem 1rem;
+    }
+
+    .tip-icon {
+      font-size: 1.1rem;
+      margin-bottom: 0.4rem;
+    }
+
+    .tip h4 {
+      font-size: 12px;
+      font-weight: 700;
+      margin-bottom: 0.2rem;
+    }
+
+    .tip p {
+      font-size: 11px;
+      color: var(--text-muted);
+      line-height: 1.4;
+    }
 
     /* FOOTER */
-    footer { border-top: 1px solid var(--border); padding: 1rem 2rem; display: flex; align-items: center; justify-content: space-between; flex-shrink: 0; }
-    .footer-copy { font-family: var(--font-mono); font-size: 11px; color: var(--text-dim); letter-spacing: 0.05em; text-decoration: none; }
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 1rem 2rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    .footer-copy {
+      font-family: var(--font-mono);
+      font-size: 11px;
+      color: var(--text-dim);
+      letter-spacing: 0.05em;
+      text-decoration: none;
+    }
 
     /* ═══════════════════════════════════════════
        STICKY BANNER AD
@@ -61,7 +214,9 @@
     ════════════════════════════════════════════ */
     .banner-ad {
       position: fixed;
-      bottom: 0; left: 0; right: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
       height: var(--banner-h);
       background: var(--bg2);
       border-top: 1px solid var(--border-accent);
@@ -71,12 +226,14 @@
       z-index: 200;
       gap: 1.5rem;
     }
+
     .banner-content {
       display: flex;
       align-items: center;
       gap: 1rem;
       font-size: 13px;
     }
+
     .banner-label {
       font-family: var(--font-mono);
       font-size: 10px;
@@ -88,11 +245,16 @@
       border-radius: 2px;
       flex-shrink: 0;
     }
+
     .banner-text {
       color: var(--text-muted);
       font-size: 13px;
     }
-    .banner-text b { color: var(--text); }
+
+    .banner-text b {
+      color: var(--text);
+    }
+
     .banner-cta {
       display: inline-block;
       padding: 6px 16px;
@@ -108,272 +270,439 @@
       transition: background 0.2s;
       flex-shrink: 0;
     }
-    .banner-cta:hover { background: #f0b040; }
+
+    .banner-cta:hover {
+      background: #f0b040;
+    }
+
     .banner-close {
-      position: absolute; right: 1rem;
-      background: none; border: none; cursor: pointer;
-      color: var(--text-dim); font-size: 18px; line-height: 1;
+      position: absolute;
+      right: 1rem;
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 18px;
+      line-height: 1;
       padding: 4px 6px;
       transition: color 0.2s;
     }
-    .banner-close:hover { color: var(--text); }
+
+    .banner-close:hover {
+      color: var(--text);
+    }
 
     /* Game widget overrides */
-    #app { font-family: var(--font-sans); padding: 0; }
-    canvas { display: block; border-radius: 6px; border: 1px solid var(--border); background: #1a1a2e; cursor: none; max-width: 100%; height: auto; }
-    .screen { display: none; flex-direction: column; align-items: center; gap: 1rem; }
-    .screen.active { display: flex; }
-    .card { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 1.25rem 1.5rem; width: 100%; max-width: 420px; }
-    h2 { font-size: 20px; font-weight: 700; margin: 0 0 0.75rem; color: var(--text); letter-spacing: -0.01em; }
-    .code-box { font-family: var(--font-mono); font-size: 28px; font-weight: 500; letter-spacing: 6px; text-align: center; padding: 1rem; background: var(--bg); border-radius: 4px; color: var(--accent); margin: 0.5rem 0; border: 1px solid var(--border-accent); }
-    .row { display: flex; gap: 8px; }
-    input { flex: 1; padding: 9px 12px; border: 1px solid var(--border); border-radius: 4px; font-size: 15px; background: var(--bg); color: var(--text); font-family: var(--font-sans); }
-    input:focus { outline: none; border-color: var(--border-accent); }
-    button { padding: 9px 16px; border: 1px solid var(--border); border-radius: 4px; background: transparent; color: var(--text-muted); font-size: 13px; font-family: var(--font-sans); font-weight: 600; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
-    button:hover { border-color: var(--border-accent); color: var(--accent); background: var(--accent-glow); }
-    button.primary { background: var(--accent); border-color: var(--accent); color: #0b0b0f; font-weight: 700; }
-    button.primary:hover { background: #f0b040; border-color: #f0b040; color: #0b0b0f; }
-    .status { font-size: 13px; color: var(--text-muted); text-align: center; }
-    .hud { display: flex; gap: 8px; margin-top: 10px; font-size: 12px; color: var(--text-muted); flex-wrap: wrap; font-family: var(--font-mono); }
-    .hud span { background: var(--bg3); border: 1px solid var(--border); padding: 4px 10px; border-radius: 3px; letter-spacing: 0.05em; }
-    .hud span b { color: var(--accent); }
-    #err { color: #E24B4A; font-size: 13px; min-height: 18px; text-align: center; margin-top: 4px; }
+    #app {
+      font-family: var(--font-sans);
+      padding: 0;
+    }
+
+    canvas {
+      display: block;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: #1a1a2e;
+      cursor: none;
+      max-width: 100%;
+      height: auto;
+    }
+
+    .screen {
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
+
+    .screen.active {
+      display: flex;
+    }
+
+    .card {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 1.25rem 1.5rem;
+      width: 100%;
+      max-width: 420px;
+    }
+
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      margin: 0 0 0.75rem;
+      color: var(--text);
+      letter-spacing: -0.01em;
+    }
+
+    .code-box {
+      font-family: var(--font-mono);
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: 6px;
+      text-align: center;
+      padding: 1rem;
+      background: var(--bg);
+      border-radius: 4px;
+      color: var(--accent);
+      margin: 0.5rem 0;
+      border: 1px solid var(--border-accent);
+    }
+
+    .row {
+      display: flex;
+      gap: 8px;
+    }
+
+    input {
+      flex: 1;
+      padding: 9px 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      font-size: 15px;
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+    }
+
+    input:focus {
+      outline: none;
+      border-color: var(--border-accent);
+    }
+
+    button {
+      padding: 9px 16px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: transparent;
+      color: var(--text-muted);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: all 0.15s;
+    }
+
+    button:hover {
+      border-color: var(--border-accent);
+      color: var(--accent);
+      background: var(--accent-glow);
+    }
+
+    button.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #0b0b0f;
+      font-weight: 700;
+    }
+
+    button.primary:hover {
+      background: #f0b040;
+      border-color: #f0b040;
+      color: #0b0b0f;
+    }
+
+    .status {
+      font-size: 13px;
+      color: var(--text-muted);
+      text-align: center;
+    }
+
+    .hud {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      font-size: 12px;
+      color: var(--text-muted);
+      flex-wrap: wrap;
+      font-family: var(--font-mono);
+    }
+
+    .hud span {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      padding: 4px 10px;
+      border-radius: 3px;
+      letter-spacing: 0.05em;
+    }
+
+    .hud span b {
+      color: var(--accent);
+    }
+
+    #err {
+      color: #E24B4A;
+      font-size: 13px;
+      min-height: 18px;
+      text-align: center;
+      margin-top: 4px;
+    }
 
     @media (max-width: 700px) {
-      nav { padding: 0 1rem; }
-      main { padding: 1.5rem 1rem 2.5rem; }
-      canvas { width: 100% !important; height: auto !important; }
-      .banner-text { display: none; }
+      nav {
+        padding: 0 1rem;
+      }
+
+      main {
+        padding: 1.5rem 1rem 2.5rem;
+      }
+
+      canvas {
+        width: 100% !important;
+        height: auto !important;
+      }
+
+      .banner-text {
+        display: none;
+      }
     }
   </style>
 </head>
+
 <body>
 
-<!-- NAV -->
-<nav>
-  <a class="nav-logo" href="../index.html">
-    <img src="../images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega">
-    <span>DYSOMEGA</span>
-  </a>
-  <a class="nav-back" href="../index.html#play">← All Games</a>
-</nav>
+  <!-- NAV -->
+  <nav>
+    <a class="nav-logo" href="../index.html">
+      <img src="../images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega">
+      <span>DYSOMEGA</span>
+    </a>
+    <a class="nav-back" href="../index.html#play">← All Games</a>
+  </nav>
 
-<!-- MAIN -->
-<main>
-  <div class="page-header">
-    <div class="page-tag">Free · Browser · No Install</div>
-    <h1 class="page-title">🫧 Blob Tag</h1>
-    <p class="page-sub">Eat or be eaten. Grow bigger. Survive.</p>
-  </div>
+  <!-- MAIN -->
+  <main>
+    <div class="page-header">
+      <h1 class="page-title">O-volve</h1>
+      <p class="page-sub">Eat or be eaten. Grow bigger. Survive.</p>
+    </div>
 
-  <div class="game-wrapper">
-    <div class="game-inner">
-      <div id="app">
-        <div id="screen-menu" class="screen active">
-          <div class="card">
-            <h2>🫧 Blob Tag</h2>
-            <p style="font-size:14px;color:var(--text-muted);margin:0 0 1rem">Eat pellets to grow. Eat things smaller than you. Avoid bigger blobs.<br>Use <b>WASD</b>, arrow keys, or the mouse to move.</p>
-            <div style="margin-bottom:1rem">
-              <button class="primary" style="width:100%;margin-bottom:8px" id="btn-solo">▶ Play solo vs bots</button>
-              <button style="width:100%;margin-bottom:8px" id="btn-host">📡 Host a game (get join code)</button>
+    <div class="game-wrapper">
+      <div class="game-inner">
+        <div id="app">
+          <div id="screen-menu" class="screen active">
+            <div class="card">
+              <h2>O-volve</h2>
+              <p style="font-size:14px;color:var(--text-muted);margin:0 0 1rem">Eat pellets to grow. Eat things smaller
+                than you. Avoid bigger blobs.<br>Use <b>WASD</b>, arrow keys, or the mouse to move.</p>
+              <div style="margin-bottom:1rem">
+                <button class="primary" style="width:100%;margin-bottom:8px" id="btn-solo">▶ Play solo vs bots</button>
+                <button style="width:100%;margin-bottom:8px" id="btn-host">📡 Host a game (get join code)</button>
+              </div>
+              <div class="row">
+                <input id="join-input" placeholder="Enter join code…" maxlength="6"
+                  style="text-transform:uppercase;letter-spacing:3px" />
+                <button id="btn-join">Join</button>
+              </div>
+              <div id="err" style="margin-top:8px"></div>
             </div>
-            <div class="row">
-              <input id="join-input" placeholder="Enter join code…" maxlength="6" style="text-transform:uppercase;letter-spacing:3px"/>
-              <button id="btn-join">Join</button>
+          </div>
+          <div id="screen-lobby" class="screen">
+            <div class="card">
+              <h2 id="lobby-title">Hosting…</h2>
+              <p class="status" id="lobby-status">Waiting for a friend to join…</p>
+              <div class="code-box" id="lobby-code"></div>
+              <p class="status">Share this code. Game starts when 2 players connect.</p>
+              <button id="btn-back" style="margin-top:8px">← Back</button>
             </div>
-            <div id="err" style="margin-top:8px"></div>
           </div>
-        </div>
-        <div id="screen-lobby" class="screen">
-          <div class="card">
-            <h2 id="lobby-title">Hosting…</h2>
-            <p class="status" id="lobby-status">Waiting for a friend to join…</p>
-            <div class="code-box" id="lobby-code"></div>
-            <p class="status">Share this code. Game starts when 2 players connect.</p>
-            <button id="btn-back" style="margin-top:8px">← Back</button>
+          <div id="screen-game" class="screen">
+            <canvas id="canvas" width="660" height="480"></canvas>
+            <div class="hud">
+              <span>You: <b id="hud-you">—</b></span>
+              <span id="hud-p2-wrap" style="display:none">Friend: <b id="hud-p2">—</b></span>
+              <span>Bots: <b id="hud-bots">—</b></span>
+              <span id="hud-conn" style="display:none">🟢 Connected</span>
+            </div>
+            <button id="btn-restart" style="margin-top:8px">↺ Restart solo</button>
           </div>
-        </div>
-        <div id="screen-game" class="screen">
-          <canvas id="canvas" width="660" height="480"></canvas>
-          <div class="hud">
-            <span>You: <b id="hud-you">—</b></span>
-            <span id="hud-p2-wrap" style="display:none">Friend: <b id="hud-p2">—</b></span>
-            <span>Bots: <b id="hud-bots">—</b></span>
-            <span id="hud-conn" style="display:none">🟢 Connected</span>
-          </div>
-          <button id="btn-restart" style="margin-top:8px">↺ Restart solo</button>
         </div>
       </div>
     </div>
-  </div>
 
-  <div class="how-to">
-    <div class="tip"><div class="tip-icon">🟡</div><h4>Eat pellets</h4><p>Collect dots to grow your blob and score points.</p></div>
-    <div class="tip"><div class="tip-icon">😋</div><h4>Eat smaller blobs</h4><p>You need to be ~15% bigger to eat another blob.</p></div>
-    <div class="tip"><div class="tip-icon">💨</div><h4>Dodge bigger blobs</h4><p>Smaller = faster. Use your speed to escape.</p></div>
-    <div class="tip"><div class="tip-icon">📡</div><h4>Multiplayer</h4><p>Host a game, share the 6-letter code, play together.</p></div>
-  </div>
-</main>
+    <div class="how-to">
+      <div class="tip">
+        <h4>Eat pellets</h4>
+        <p>Collect dots to grow your blob and score points.</p>
+      </div>
+      <div class="tip">
+        <h4>Eat smaller blobs</h4>
+        <p>You need to be ~15% bigger to eat another blob.</p>
+      </div>
+      <div class="tip">
+        <h4>Dodge bigger blobs</h4>
+        <p>Smaller = faster. Use your speed to escape.</p>
+      </div>
+      <div class="tip">
+        <h4>Multiplayer</h4>
+        <p>Host a game, share the 6-letter code, play together.</p>
+      </div>
+    </div>
+  </main>
 
-<footer>
-  <span class="footer-copy">© 2026 DYSOMEGA</span>
-  <a href="../index.html" class="footer-copy">dysomega.com</a>
-</footer>
+  <footer>
+    <span class="footer-copy">© 2026 DYSOMEGA</span>
+    <a href="../index.html" class="footer-copy">dysomega.com</a>
+  </footer>
 
-<!-- ═══════════════════════════════════════════════════
+  <!-- ═══════════════════════════════════════════════════
      STICKY BANNER AD
      Edit .banner-text and .banner-cta to change the ad.
      The close button hides it for the session.
 ════════════════════════════════════════════════════ -->
-<div class="banner-ad" id="bannerAd">
-  <div class="banner-content">
-    <span class="banner-label">From Dysomega</span>
-    <span class="banner-text">Working on <b>Chuture</b> — 2D survival crafting on a time-travelling train.</span>
-    <a href="https://dysomega.itch.io/chuture" class="banner-cta" target="_blank">Check it out →</a>
+  <div class="banner-ad" id="bannerAd">
+    <div class="banner-content">
+      <span class="banner-label">From Dysomega</span>
+      <span class="banner-text">Working on <b>Chuture</b> — 2D survival crafting on a time-travelling train.</span>
+      <a href="https://dysomega.itch.io/chuture" class="banner-cta" target="_blank">Check it out →</a>
+    </div>
+    <button class="banner-close" id="bannerClose" aria-label="Close">×</button>
   </div>
-  <button class="banner-close" id="bannerClose" aria-label="Close">×</button>
-</div>
 
-<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
-<script>
-// Banner close
-document.getElementById('bannerClose').addEventListener('click', () => {
-  const b = document.getElementById('bannerAd');
-  b.style.display = 'none';
-  document.body.style.paddingBottom = '0';
-});
+  <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+  <script>
+    // Banner close
+    document.getElementById('bannerClose').addEventListener('click', () => {
+      const b = document.getElementById('bannerAd');
+      b.style.display = 'none';
+      document.body.style.paddingBottom = '0';
+    });
 
-// ── GAME LOGIC ──
-const W=2400,H=2400,CVDW=660,CVDH=480,PELLET_COUNT=400,BOT_COUNT=6,SPEED_BASE=3.2;
-const COLORS=['#E24B4A','#378ADD','#1D9E75','#EF9F27','#D4537E','#7F77DD','#D85A30','#639922'];
-function rnd(a,b){return Math.random()*(b-a)+a;}
-function dist(a,b){return Math.hypot(a.x-b.x,a.y-b.y);}
-function clamp(v,lo,hi){return Math.max(lo,Math.min(hi,v));}
+    // ── GAME LOGIC ──
+    const W = 2400, H = 2400, CVDW = 660, CVDH = 480, PELLET_COUNT = 400, BOT_COUNT = 6, SPEED_BASE = 3.2;
+    const MAXSIZE = 255;
+    const COLORS = ['#E24B4A', '#378ADD', '#1D9E75', '#EF9F27', '#D4537E', '#7F77DD', '#D85A30', '#639922'];
+    function rnd(a, b) { return Math.random() * (b - a) + a; }
+    function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+    function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-let peer=null,conn=null,isHost=false,gameState=null,animId=null,keys={},lastSent=0;
-const canvas=document.getElementById('canvas');
-const ctx=canvas.getContext('2d');
+    let peer = null, conn = null, isHost = false, gameState = null, animId = null, keys = {}, lastSent = 0;
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
 
-function showScreen(id){document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));document.getElementById('screen-'+id).classList.add('active');}
-function makeBlob(id,x,y,color,name,isBot){return{id,x,y,r:22,color,name,isBot,vx:0,vy:0,score:0,dead:false};}
-function makePellet(){return{x:rnd(30,W-30),y:rnd(30,H-30),r:7,color:COLORS[Math.floor(rnd(0,COLORS.length))]};}
-function initGame(myIndex){
-  return{
-    me:makeBlob('me',rnd(200,W-200),rnd(200,H-200),COLORS[myIndex%COLORS.length],'You',false),
-    p2:null,
-    bots:Array.from({length:BOT_COUNT},(_,i)=>makeBlob('bot'+i,rnd(100,W-100),rnd(100,H-100),COLORS[(myIndex+i+2)%COLORS.length],'Bot '+(i+1),true)),
-    pellets:Array.from({length:PELLET_COUNT},makePellet),
-    tick:0
-  };
-}
-function spawnPellet(gs){if(gs.pellets.length<PELLET_COUNT)gs.pellets.push(makePellet());}
-function botAI(bot,gs){
-  if(bot.dead)return;
-  const all=[gs.me,...(gs.p2?[gs.p2]:[]),...gs.bots.filter(b=>b!==bot&&!b.dead)];
-  let tx=rnd(0,W),ty=rnd(0,H),bd=9999;
-  for(const p of gs.pellets){const d=dist(bot,p);if(d<bd&&all.every(b=>b===bot||dist(bot,b)>b.r*1.6||b.r<bot.r)){bd=d;tx=p.x;ty=p.y;}}
-  for(const b of all){if(!b.dead&&b.r<bot.r*0.85&&dist(bot,b)<200){tx=b.x;ty=b.y;}if(!b.dead&&b.r>bot.r*1.1&&dist(bot,b)<300){tx+=2*(bot.x-b.x);ty+=2*(bot.y-b.y);}}
-  const a=Math.atan2(ty-bot.y,tx-bot.x),spd=SPEED_BASE*(22/Math.max(bot.r,22))*0.85;
-  bot.vx=Math.cos(a)*spd;bot.vy=Math.sin(a)*spd;
-  bot.x=clamp(bot.x+bot.vx,bot.r,W-bot.r);bot.y=clamp(bot.y+bot.vy,bot.r,H-bot.r);
-}
-function playerMove(blob){
-  let dx=0,dy=0;
-  if(keys['ArrowUp']||keys['w']||keys['W'])dy--;
-  if(keys['ArrowDown']||keys['s']||keys['S'])dy++;
-  if(keys['ArrowLeft']||keys['a']||keys['A'])dx--;
-  if(keys['ArrowRight']||keys['d']||keys['D'])dx++;
-  if(dx||dy){const spd=SPEED_BASE*(22/Math.max(blob.r,22)),len=Math.hypot(dx,dy);blob.x=clamp(blob.x+dx/len*spd,blob.r,W-blob.r);blob.y=clamp(blob.y+dy/len*spd,blob.r,H-blob.r);}
-}
-function checkEat(eater,gs){
-  if(eater.dead)return;
-  gs.pellets=gs.pellets.filter(p=>{if(dist(eater,p)<eater.r+p.r*0.6){eater.r=Math.min(eater.r+0.8,180);eater.score++;return false;}return true;});
-  for(const t of [...gs.bots,(gs.p2&&eater.id!=='p2'?gs.p2:null),(gs.me&&eater.id!=='me'?gs.me:null)].filter(Boolean)){
-    if(t.dead)continue;
-    if(dist(eater,t)<eater.r*0.85&&eater.r>t.r*1.15){eater.r=Math.min(eater.r+t.r*0.4,180);eater.score+=5;t.r=22;t.score=Math.max(0,t.score-3);t.x=rnd(100,W-100);t.y=rnd(100,H-100);}
-  }
-}
-function drawBlob(b,cx,cy){
-  if(b.dead)return;
-  const sx=b.x-cx,sy=b.y-cy;
-  ctx.beginPath();ctx.arc(sx,sy,b.r,0,Math.PI*2);ctx.fillStyle=b.color;ctx.fill();
-  ctx.strokeStyle='rgba(255,255,255,0.25)';ctx.lineWidth=2;ctx.stroke();
-  ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(10,Math.min(b.r*0.55,18))}px sans-serif`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(b.name,sx,sy);
-  ctx.font=`${Math.max(9,Math.min(b.r*0.38,13))}px sans-serif`;ctx.fillStyle='rgba(255,255,255,0.75)';ctx.fillText(Math.round(b.r-22),sx,sy+b.r*0.38);
-}
-function drawGrid(cx,cy){
-  ctx.strokeStyle='rgba(255,255,255,0.04)';ctx.lineWidth=1;
-  const g=80,ox=(-cx)%g,oy=(-cy)%g;
-  for(let x=ox;x<CVDW;x+=g){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,CVDH);ctx.stroke();}
-  for(let y=oy;y<CVDH;y+=g){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(CVDW,y);ctx.stroke();}
-}
-function drawMinimap(gs){
-  const mw=110,mh=110,mx=CVDW-mw-8,my=8,sx=mw/W,sy=mh/H;
-  ctx.fillStyle='rgba(0,0,0,0.5)';ctx.beginPath();ctx.roundRect(mx,my,mw,mh,5);ctx.fill();
-  for(const b of[gs.me,...(gs.p2?[gs.p2]:[]),...gs.bots]){if(b.dead)continue;ctx.beginPath();ctx.arc(mx+b.x*sx,my+b.y*sy,Math.max(2,b.r*sx*2),0,Math.PI*2);ctx.fillStyle=b.color;ctx.fill();}
-}
-function gameLoop(){
-  if(!gameState)return;
-  const gs=gameState;gs.tick++;
-  playerMove(gs.me);for(const b of gs.bots)botAI(b,gs);
-  checkEat(gs.me,gs);for(const b of gs.bots)checkEat(b,gs);if(gs.p2)checkEat(gs.p2,gs);
-  if(gs.tick%12===0)spawnPellet(gs);
-  const camX=clamp(gs.me.x-CVDW/2,0,W-CVDW),camY=clamp(gs.me.y-CVDH/2,0,H-CVDH);
-  ctx.clearRect(0,0,CVDW,CVDH);ctx.fillStyle='#1a1a2e';ctx.fillRect(0,0,CVDW,CVDH);
-  drawGrid(camX,camY);
-  for(const p of gs.pellets){const sx=p.x-camX,sy=p.y-camY;if(sx<-10||sx>CVDW+10||sy<-10||sy>CVDH+10)continue;ctx.beginPath();ctx.arc(sx,sy,p.r,0,Math.PI*2);ctx.fillStyle=p.color;ctx.fill();}
-  for(const b of gs.bots)drawBlob(b,camX,camY);if(gs.p2)drawBlob(gs.p2,camX,camY);drawBlob(gs.me,camX,camY);
-  drawMinimap(gs);
-  document.getElementById('hud-you').textContent=`size ${Math.round(gs.me.r-22)} · score ${gs.me.score}`;
-  if(gs.p2){document.getElementById('hud-p2-wrap').style.display='';document.getElementById('hud-p2').textContent=`size ${Math.round(gs.p2.r-22)} · score ${gs.p2.score}`;}
-  document.getElementById('hud-bots').textContent=gs.bots.map(b=>Math.round(b.r-22)).join(' / ');
-  if(conn&&conn.open){const now=Date.now();if(now-lastSent>50){lastSent=now;conn.send({type:'state',x:gs.me.x,y:gs.me.y,r:gs.me.r,score:gs.me.score});}}
-  animId=requestAnimationFrame(gameLoop);
-}
-function startGame(asHost){showScreen('game');gameState=initGame(asHost?0:1);if(conn)document.getElementById('hud-conn').style.display='';cancelAnimationFrame(animId);gameLoop();}
-function setupConn(c){
-  conn=c;
-  c.on('data',data=>{if(!gameState)return;if(data.type==='state'){if(!gameState.p2)gameState.p2=makeBlob('p2',data.x,data.y,COLORS[1],'Friend',false);gameState.p2.x=data.x;gameState.p2.y=data.y;gameState.p2.r=data.r;gameState.p2.score=data.score;}if(data.type==='start')startGame(false);});
-  c.on('close',()=>{document.getElementById('hud-conn').style.display='none';if(gameState)gameState.p2=null;});
-  c.on('error',()=>{});
-}
-function genCode(){return Math.random().toString(36).substr(2,6).toUpperCase();}
+    function showScreen(id) { document.querySelectorAll('.screen').forEach(s => s.classList.remove('active')); document.getElementById('screen-' + id).classList.add('active'); }
+    function makeBlob(id, x, y, color, name, isBot) { return { id, x, y, r: 22, color, name, isBot, vx: 0, vy: 0, score: 0, dead: false }; }
+    function makePellet() { return { x: rnd(30, W - 30), y: rnd(30, H - 30), r: 7, color: COLORS[Math.floor(rnd(0, COLORS.length))] }; }
+    function initGame(myIndex) {
+      return {
+        me: makeBlob('me', rnd(200, W - 200), rnd(200, H - 200), COLORS[myIndex % COLORS.length], 'You', false),
+        p2: null,
+        bots: Array.from({ length: BOT_COUNT }, (_, i) => makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100), COLORS[(myIndex + i + 2) % COLORS.length], 'Bot ' + (i + 1), true)),
+        pellets: Array.from({ length: PELLET_COUNT }, makePellet),
+        tick: 0
+      };
+    }
+    function spawnPellet(gs) { if (gs.pellets.length < PELLET_COUNT) gs.pellets.push(makePellet()); }
+    function botAI(bot, gs) {
+      if (bot.dead) return;
+      const all = [gs.me, ...(gs.p2 ? [gs.p2] : []), ...gs.bots.filter(b => b !== bot && !b.dead)];
+      let tx = rnd(0, W), ty = rnd(0, H), bd = 9999;
+      for (const p of gs.pellets) { const d = dist(bot, p); if (d < bd && all.every(b => b === bot || dist(bot, b) > b.r * 1.6 || b.r < bot.r)) { bd = d; tx = p.x; ty = p.y; } }
+      for (const b of all) { if (!b.dead && b.r < bot.r * 0.85 && dist(bot, b) < 200) { tx = b.x; ty = b.y; } if (!b.dead && b.r > bot.r * 1.1 && dist(bot, b) < 300) { tx += 2 * (bot.x - b.x); ty += 2 * (bot.y - b.y); } }
+      const a = Math.atan2(ty - bot.y, tx - bot.x), spd = SPEED_BASE * (22 / Math.max(bot.r, 22)) * 0.85;
+      bot.vx = Math.cos(a) * spd; bot.vy = Math.sin(a) * spd;
+      bot.x = clamp(bot.x + bot.vx, bot.r, W - bot.r); bot.y = clamp(bot.y + bot.vy, bot.r, H - bot.r);
+    }
+    function playerMove(blob) {
+      let dx = 0, dy = 0;
+      if (keys['ArrowUp'] || keys['w'] || keys['W']) dy--;
+      if (keys['ArrowDown'] || keys['s'] || keys['S']) dy++;
+      if (keys['ArrowLeft'] || keys['a'] || keys['A']) dx--;
+      if (keys['ArrowRight'] || keys['d'] || keys['D']) dx++;
+      if (dx || dy) { const spd = SPEED_BASE * (22 / Math.max(blob.r, 22)), len = Math.hypot(dx, dy); blob.x = clamp(blob.x + dx / len * spd, blob.r, W - blob.r); blob.y = clamp(blob.y + dy / len * spd, blob.r, H - blob.r); }
+    }
+    function checkEat(eater, gs) {
+      if (eater.dead) return;
+      gs.pellets = gs.pellets.filter(p => { if (dist(eater, p) < eater.r + p.r * 0.6) { eater.r = Math.min(eater.r + 0.8, MAXSIZE); eater.score++; return false; } return true; });
+      for (const t of [...gs.bots, (gs.p2 && eater.id !== 'p2' ? gs.p2 : null), (gs.me && eater.id !== 'me' ? gs.me : null)].filter(Boolean)) {
+        if (t.dead) continue;
+        if (dist(eater, t) < eater.r * 0.85 && eater.r > t.r * 1.15) { eater.r = Math.min(eater.r + t.r * 0.4, MAXSIZE); eater.score += 5; t.r = 22; t.score = Math.max(0, t.score - 3); t.x = rnd(100, W - 100); t.y = rnd(100, H - 100); }
+      }
+    }
+    function drawBlob(b, cx, cy) {
+      if (b.dead) return;
+      const sx = b.x - cx, sy = b.y - cy;
+      ctx.beginPath(); ctx.arc(sx, sy, b.r, 0, Math.PI * 2); ctx.fillStyle = b.color; ctx.fill();
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+      ctx.fillStyle = '#fff'; ctx.font = `bold ${Math.max(10, Math.min(b.r * 0.55, 18))}px sans-serif`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(b.name, sx, sy);
+      ctx.font = `${Math.max(9, Math.min(b.r * 0.38, 13))}px sans-serif`; ctx.fillStyle = 'rgba(255,255,255,0.75)'; ctx.fillText(Math.round(b.r - 22), sx, sy + b.r * 0.38);
+    }
+    function drawGrid(cx, cy) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.04)'; ctx.lineWidth = 1;
+      const g = 80, ox = (-cx) % g, oy = (-cy) % g;
+      for (let x = ox; x < CVDW; x += g) { ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, CVDH); ctx.stroke(); }
+      for (let y = oy; y < CVDH; y += g) { ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(CVDW, y); ctx.stroke(); }
+    }
+    function drawMinimap(gs) {
+      const mw = 110, mh = 110, mx = CVDW - mw - 8, my = 8, sx = mw / W, sy = mh / H;
+      ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.beginPath(); ctx.roundRect(mx, my, mw, mh, 5); ctx.fill();
+      for (const b of [gs.me, ...(gs.p2 ? [gs.p2] : []), ...gs.bots]) { if (b.dead) continue; ctx.beginPath(); ctx.arc(mx + b.x * sx, my + b.y * sy, Math.max(2, b.r * sx * 2), 0, Math.PI * 2); ctx.fillStyle = b.color; ctx.fill(); }
+    }
+    function gameLoop() {
+      if (!gameState) return;
+      const gs = gameState; gs.tick++;
+      playerMove(gs.me); for (const b of gs.bots) botAI(b, gs);
+      checkEat(gs.me, gs); for (const b of gs.bots) checkEat(b, gs); if (gs.p2) checkEat(gs.p2, gs);
+      if (gs.tick % 12 === 0) spawnPellet(gs);
+      const camX = clamp(gs.me.x - CVDW / 2, 0, W - CVDW), camY = clamp(gs.me.y - CVDH / 2, 0, H - CVDH);
+      ctx.clearRect(0, 0, CVDW, CVDH); ctx.fillStyle = '#1a1a2e'; ctx.fillRect(0, 0, CVDW, CVDH);
+      drawGrid(camX, camY);
+      for (const p of gs.pellets) { const sx = p.x - camX, sy = p.y - camY; if (sx < -10 || sx > CVDW + 10 || sy < -10 || sy > CVDH + 10) continue; ctx.beginPath(); ctx.arc(sx, sy, p.r, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.fill(); }
+      for (const b of gs.bots) drawBlob(b, camX, camY); if (gs.p2) drawBlob(gs.p2, camX, camY); drawBlob(gs.me, camX, camY);
+      drawMinimap(gs);
+      document.getElementById('hud-you').textContent = `size ${Math.round(gs.me.r - 22)} · score ${gs.me.score}`;
+      if (gs.p2) { document.getElementById('hud-p2-wrap').style.display = ''; document.getElementById('hud-p2').textContent = `size ${Math.round(gs.p2.r - 22)} · score ${gs.p2.score}`; }
+      document.getElementById('hud-bots').textContent = gs.bots.map(b => Math.round(b.r - 22)).join(' / ');
+      if (conn && conn.open) { const now = Date.now(); if (now - lastSent > 50) { lastSent = now; conn.send({ type: 'state', x: gs.me.x, y: gs.me.y, r: gs.me.r, score: gs.me.score }); } }
+      animId = requestAnimationFrame(gameLoop);
+    }
+    function startGame(asHost) { showScreen('game'); gameState = initGame(asHost ? 0 : 1); if (conn) document.getElementById('hud-conn').style.display = ''; cancelAnimationFrame(animId); gameLoop(); }
+    function setupConn(c) {
+      conn = c;
+      c.on('data', data => { if (!gameState) return; if (data.type === 'state') { if (!gameState.p2) gameState.p2 = makeBlob('p2', data.x, data.y, COLORS[1], 'Friend', false); gameState.p2.x = data.x; gameState.p2.y = data.y; gameState.p2.r = data.r; gameState.p2.score = data.score; } if (data.type === 'start') startGame(false); });
+      c.on('close', () => { document.getElementById('hud-conn').style.display = 'none'; if (gameState) gameState.p2 = null; });
+      c.on('error', () => { });
+    }
+    function genCode() { return Math.random().toString(36).substr(2, 6).toUpperCase(); }
 
-document.getElementById('btn-solo').onclick=()=>{gameState=initGame(0);showScreen('game');cancelAnimationFrame(animId);gameLoop();};
-document.getElementById('btn-host').onclick=()=>{
-  const code=genCode();showScreen('lobby');
-  document.getElementById('lobby-title').textContent='Hosting game';
-  document.getElementById('lobby-code').textContent=code;
-  document.getElementById('lobby-status').textContent='Connecting to peer network…';
-  document.getElementById('err').textContent='';isHost=true;
-  peer=new Peer('blobgame-'+code,{debug:0});
-  peer.on('open',()=>{document.getElementById('lobby-status').textContent='Waiting for a friend to join…';});
-  peer.on('connection',c=>{setupConn(c);document.getElementById('lobby-status').textContent='Friend connected! Starting…';setTimeout(()=>{startGame(true);setTimeout(()=>{if(conn&&conn.open)conn.send({type:'start'});},200);},600);});
-  peer.on('error',e=>{document.getElementById('lobby-status').textContent='Error: '+e.type;});
-};
-document.getElementById('btn-join').onclick=()=>{
-  const raw=document.getElementById('join-input').value.trim().toUpperCase();
-  if(raw.length<4){document.getElementById('err').textContent='Enter a valid code';return;}
-  document.getElementById('err').textContent='Connecting…';isHost=false;
-  if(peer)peer.destroy();
-  peer=new Peer({debug:0});
-  peer.on('open',()=>{const c=peer.connect('blobgame-'+raw,{reliable:true});setupConn(c);c.on('open',()=>{document.getElementById('err').textContent='';startGame(false);});c.on('error',()=>{document.getElementById('err').textContent='Could not connect. Check the code.';});});
-  peer.on('error',()=>{document.getElementById('err').textContent='Network error.';});
-};
-document.getElementById('btn-back').onclick=()=>{if(peer){peer.destroy();peer=null;}showScreen('menu');};
-document.getElementById('btn-restart').onclick=()=>{gameState=initGame(0);cancelAnimationFrame(animId);gameLoop();};
+    document.getElementById('btn-solo').onclick = () => { gameState = initGame(0); showScreen('game'); cancelAnimationFrame(animId); gameLoop(); };
+    document.getElementById('btn-host').onclick = () => {
+      const code = genCode(); showScreen('lobby');
+      document.getElementById('lobby-title').textContent = 'Hosting game';
+      document.getElementById('lobby-code').textContent = code;
+      document.getElementById('lobby-status').textContent = 'Connecting to peer network…';
+      document.getElementById('err').textContent = ''; isHost = true;
+      peer = new Peer('blobgame-' + code, { debug: 0 });
+      peer.on('open', () => { document.getElementById('lobby-status').textContent = 'Waiting for a friend to join…'; });
+      peer.on('connection', c => { setupConn(c); document.getElementById('lobby-status').textContent = 'Friend connected! Starting…'; setTimeout(() => { startGame(true); setTimeout(() => { if (conn && conn.open) conn.send({ type: 'start' }); }, 200); }, 600); });
+      peer.on('error', e => { document.getElementById('lobby-status').textContent = 'Error: ' + e.type; });
+    };
+    document.getElementById('btn-join').onclick = () => {
+      const raw = document.getElementById('join-input').value.trim().toUpperCase();
+      if (raw.length < 4) { document.getElementById('err').textContent = 'Enter a valid code'; return; }
+      document.getElementById('err').textContent = 'Connecting…'; isHost = false;
+      if (peer) peer.destroy();
+      peer = new Peer({ debug: 0 });
+      peer.on('open', () => { const c = peer.connect('blobgame-' + raw, { reliable: true }); setupConn(c); c.on('open', () => { document.getElementById('err').textContent = ''; startGame(false); }); c.on('error', () => { document.getElementById('err').textContent = 'Could not connect. Check the code.'; }); });
+      peer.on('error', () => { document.getElementById('err').textContent = 'Network error.'; });
+    };
+    document.getElementById('btn-back').onclick = () => { if (peer) { peer.destroy(); peer = null; } showScreen('menu'); };
+    document.getElementById('btn-restart').onclick = () => { gameState = initGame(0); cancelAnimationFrame(animId); gameLoop(); };
 
-window.addEventListener('keydown',e=>{keys[e.key]=true;if(['ArrowUp','ArrowDown','ArrowLeft','ArrowRight',' '].includes(e.key))e.preventDefault();});
-window.addEventListener('keyup',e=>{keys[e.key]=false;});
-canvas.addEventListener('mousemove',e=>{
-  if(!gameState)return;
-  const rect=canvas.getBoundingClientRect(),scaleX=CVDW/rect.width,scaleY=CVDH/rect.height;
-  const mx=(e.clientX-rect.left)*scaleX,my=(e.clientY-rect.top)*scaleY;
-  const camX=clamp(gameState.me.x-CVDW/2,0,W-CVDW),camY=clamp(gameState.me.y-CVDH/2,0,H-CVDH);
-  const dx=mx+camX-gameState.me.x,dy=my+camY-gameState.me.y,len=Math.hypot(dx,dy)||1;
-  const spd=SPEED_BASE*(22/Math.max(gameState.me.r,22));
-  if(len>5){gameState.me.x=clamp(gameState.me.x+dx/len*spd,gameState.me.r,W-gameState.me.r);gameState.me.y=clamp(gameState.me.y+dy/len*spd,gameState.me.r,H-gameState.me.r);}
-});
-</script>
+    window.addEventListener('keydown', e => { keys[e.key] = true; if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault(); });
+    window.addEventListener('keyup', e => { keys[e.key] = false; });
+    canvas.addEventListener('mousemove', e => {
+      if (!gameState) return;
+      const rect = canvas.getBoundingClientRect(), scaleX = CVDW / rect.width, scaleY = CVDH / rect.height;
+      const mx = (e.clientX - rect.left) * scaleX, my = (e.clientY - rect.top) * scaleY;
+      const camX = clamp(gameState.me.x - CVDW / 2, 0, W - CVDW), camY = clamp(gameState.me.y - CVDH / 2, 0, H - CVDH);
+      const dx = mx + camX - gameState.me.x, dy = my + camY - gameState.me.y, len = Math.hypot(dx, dy) || 1;
+      const spd = SPEED_BASE * (22 / Math.max(gameState.me.r, 22));
+      if (len > 5) { gameState.me.x = clamp(gameState.me.x + dx / len * spd, gameState.me.r, W - gameState.me.r); gameState.me.y = clamp(gameState.me.y + dy / len * spd, gameState.me.r, H - gameState.me.r); }
+    });
+  </script>
 </body>
+
 </html>
