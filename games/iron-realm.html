@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Iron Realm — Dysomega</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="../images/DysomegaLogo_V2_32_Alpha.png" type="image/png" sizes="32x32">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #0b0b0f; --bg2: #111118;
+      --accent: #e8a030; --accent-glow: rgba(232,160,48,0.08);
+      --text: #e8e6df; --text-muted: #8a8880; --text-dim: #4a4845;
+      --border: rgba(255,255,255,0.07); --border-accent: rgba(232,160,48,0.3);
+      --font-mono: 'Share Tech Mono', monospace; --font-sans: 'Syne', sans-serif;
+      --nav-h: 48px;
+      --banner-h: 52px;
+    }
+
+    html, body { height: 100%; overflow: hidden; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── NAV ── */
+    nav {
+      height: var(--nav-h);
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 1.5rem;
+      background: rgba(11,11,15,0.97);
+      border-bottom: 1px solid var(--border);
+      z-index: 10;
+    }
+
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo img { width: 24px; image-rendering: pixelated; }
+    .nav-logo span { font-family: var(--font-mono); font-size: 14px; color: var(--accent); letter-spacing: 0.15em; }
+
+    .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+
+    .nav-back {
+      display: flex; align-items: center; gap: 6px;
+      text-decoration: none; color: var(--text-muted);
+      font-size: 12px; font-weight: 600; letter-spacing: 0.08em;
+      transition: color 0.2s;
+    }
+    .nav-back:hover { color: var(--accent); }
+
+    .nav-tag {
+      font-family: var(--font-mono);
+      font-size: 10px; color: var(--accent);
+      letter-spacing: 0.2em; text-transform: uppercase;
+      border: 1px solid var(--border-accent);
+      padding: 2px 10px; border-radius: 2px;
+      background: var(--accent-glow);
+    }
+
+    /* ── GAME IFRAME ── */
+    .game-frame {
+      flex: 1;
+      width: 100%;
+      border: none;
+      display: block;
+      /* fills remaining height between nav and banner */
+    }
+
+    /* ── BANNER AD ── */
+    .banner-ad {
+      height: var(--banner-h);
+      flex-shrink: 0;
+      background: #0e0e15;
+      border-top: 1px solid var(--border-accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.25rem;
+      z-index: 10;
+      position: relative;
+    }
+
+    .banner-label {
+      font-family: var(--font-mono);
+      font-size: 10px; color: var(--text-dim);
+      letter-spacing: 0.15em; text-transform: uppercase;
+      border: 1px solid var(--border); padding: 2px 7px; border-radius: 2px;
+      flex-shrink: 0;
+    }
+
+    .banner-text { color: var(--text-muted); font-size: 13px; font-family: var(--font-sans); }
+    .banner-text b { color: var(--text); }
+
+    .banner-cta {
+      display: inline-block; padding: 6px 16px;
+      background: var(--accent); color: #0b0b0f;
+      font-family: var(--font-sans); font-size: 12px; font-weight: 700;
+      letter-spacing: 0.08em; text-transform: uppercase;
+      text-decoration: none; border-radius: 2px;
+      transition: background 0.2s; flex-shrink: 0;
+    }
+    .banner-cta:hover { background: #f0b040; }
+
+    .banner-close {
+      position: absolute; right: 1rem;
+      background: none; border: none; cursor: pointer;
+      color: var(--text-dim); font-size: 20px; line-height: 1;
+      padding: 4px 6px; transition: color 0.2s;
+    }
+    .banner-close:hover { color: var(--text); }
+
+    @media (max-width: 600px) {
+      .nav-tag { display: none; }
+      .banner-text { display: none; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- NAV -->
+<nav>
+  <a class="nav-logo" href="../index.html">
+    <img src="../images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega">
+    <span>DYSOMEGA</span>
+  </a>
+  <div class="nav-right">
+    <span class="nav-tag">⚔ Iron Realm</span>
+    <a class="nav-back" href="../index.html#play">← All Games</a>
+  </div>
+</nav>
+
+<!-- GAME (full remaining height, isolated in iframe) -->
+<iframe
+  class="game-frame"
+  src="iron-realm-game.html"
+  title="Iron Realm — Medieval Strategy"
+  allowfullscreen
+></iframe>
+
+<!-- BANNER AD -->
+<div class="banner-ad" id="bannerAd">
+  <div class="banner-label">From Dysomega</div>
+  <span class="banner-text">Working on <b>Chuture</b> — 2D survival crafting on a time-travelling train.</span>
+  <a href="https://dysomega.itch.io/chuture" class="banner-cta" target="_blank">Check it out →</a>
+  <button class="banner-close" id="bannerClose" aria-label="Close banner">×</button>
+</div>
+
+<script>
+  document.getElementById('bannerClose').addEventListener('click', () => {
+    const banner = document.getElementById('bannerAd');
+    banner.style.display = 'none';
+    // Let the iframe take the freed space
+    document.querySelector('.game-frame').style.flex = '1';
+  });
+</script>
+</body>
+</html>
