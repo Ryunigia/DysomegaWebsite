@@ -632,11 +632,25 @@
     // ── UPGRADES DEFINITION ──
     const UPGRADE_DEFS = [
       { id: 'speed',   label: 'Speed Boost',     desc: '+20% speed per stack. Cost rises each time.', cost: 50, icon: '⚡', stackable: true, requires: null },
-      { id: 'shield',  label: 'Shield',           desc: 'Need to be 25% bigger to eat you (once)', cost: 60, icon: '🛡️', maxLevel: 1, requires: null },
-      { id: 'magnet',  label: 'Pellet Magnet',    desc: 'Attract nearby pellets', cost: 70, icon: '🧲', maxLevel: 1, requires: null },
-      { id: 'shoot',   label: 'Shooter',          desc: 'Fire blobs (Space / shoot btn)', cost: 100, icon: '💥', maxLevel: 1, requires: null },
-      { id: 'regen',   label: 'Regeneration',     desc: 'Slowly regrow size over time', cost: 90, icon: '💚', maxLevel: 1, requires: null },
+      { id: 'zoom',    label: 'Zoom Out',         desc: '+10% zoom-out multiplier per stack.',         cost: 60, icon: '🔭', stackable: true, requires: null },
+      { id: 'shield',  label: 'Shield',           desc: 'Need to be 25% bigger to eat you (once)',     cost: 60, icon: '🛡️', maxLevel: 1, requires: null },
+      { id: 'magnet',  label: 'Pellet Magnet',    desc: '+80px flat pull range per stack. Cost rises.', cost: 70, icon: '🧲', stackable: true, requires: null },
+      { id: 'shoot',   label: 'Shooter',          desc: 'Fire blobs (Space / shoot btn)',               cost: 100, icon: '💥', maxLevel: 1, requires: null },
+      { id: 'regen',   label: 'Regeneration',     desc: 'Slowly regrow size over time',                cost: 90, icon: '💚', maxLevel: 1, requires: null },
     ];
+
+    // Upgrade prefix names for bots
+    const UPGRADE_PREFIXES = {
+      speed:  'Swift',
+      zoom:   'Seer',
+      shield: 'Stalwart',
+      magnet: 'Magnetic',
+      shoot:  'Shooting',
+      regen:  'Undying',
+    };
+
+    // Greek/Norse mythic bot names
+    const BOT_NAMES = ['Thor', 'Zeus', 'Ares', 'Hades', 'Poseidon', 'Apollo', 'Odin', 'Loki', 'Hermes', 'Athena', 'Freya', 'Anubis', 'Kratos'];
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -648,7 +662,7 @@
     }
 
     function makeBlob(id, x, y, color, name, isBot) {
-      return { id, x, y, r: 22, color, name, isBot, vx: 0, vy: 0, score: 0, dead: false,
+      return { id, x, y, r: 22, color, name, baseName: name, isBot, vx: 0, vy: 0, score: 0, dead: false,
                upgrades: {}, projectiles: [], shieldActive: false };
     }
 
@@ -662,7 +676,7 @@
         me: makeBlob('me', rnd(200, W - 200), rnd(200, H - 200), COLORS[myIndex % COLORS.length], 'You', false),
         p2: null,
         bots: Array.from({ length: BOT_COUNT }, (_, i) =>
-          makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100), COLORS[(myIndex + i + 2) % COLORS.length], 'Bot ' + (i + 1), true)),
+          makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100), COLORS[(myIndex + i + 2) % COLORS.length], BOT_NAMES[i % BOT_NAMES.length], true)),
         pellets: Array.from({ length: PELLET_COUNT }, makePellet),
         tick: 0,
         allProjectiles: []
@@ -673,13 +687,14 @@
 
     // ── CAMERA ZOOM based on player size ──
     function getZoom(blob) {
-      // Step every 50 size. Strength is ~50% of full compensation:
-      // full zoom = 22/snappedR; we take the geometric midpoint sqrt(22/snappedR)
-      // so the blob grows visually but not as fast as the world.
+      // Step every 50 size. Strength is ~50% of full compensation.
       const size = Math.max(0, blob.r - 22);
       const bracket = Math.floor(size / 50) * 50;
       const snappedR = 22 + bracket;
-      return Math.max(0.15, Math.sqrt(22 / snappedR));
+      const baseZoom = Math.max(0.15, Math.sqrt(22 / snappedR));
+      // Each zoom upgrade stack zooms out an extra 10%
+      const zoomStacks = (blob.upgrades && blob.upgrades.zoom) || 0;
+      return Math.max(0.06, baseZoom / Math.pow(1.1, zoomStacks));
     }
 
     function getCam(blob) {
@@ -781,7 +796,8 @@
     function checkEat(eater, gs) {
       if (eater.dead) return;
       // Pellet magnet — pull pellets toward player, eat on contact
-      const magnetRange = eater.upgrades && eater.upgrades.magnet ? eater.r * 3 : 0;
+      const magnetStacks = (eater.upgrades && eater.upgrades.magnet) || 0;
+      const magnetRange = magnetStacks > 0 ? eater.r + magnetStacks * 80 : 0;
 
       gs.pellets = gs.pellets.filter(p => {
         const d = dist(eater, p);
@@ -793,7 +809,7 @@
         if (magnetRange > 0 && d < magnetRange) {
           // Pull pellet toward eater
           const angle = Math.atan2(eater.y - p.y, eater.x - p.x);
-          const pull = 2.5 + (magnetRange - d) / magnetRange * 3;
+          const pull = 2.0 + (magnetRange - d) / magnetRange * 4;
           p.x += Math.cos(angle) * pull;
           p.y += Math.sin(angle) * pull;
         }
@@ -818,7 +834,24 @@
           t.r = 22;
           t.score = Math.max(0, t.score - 3);
           t.x = rnd(100, W - 100); t.y = rnd(100, H - 100);
-          t.upgrades = {}; // lose upgrades on death
+          // Bots respawn with one random upgrade (stackable ones get +1)
+          if (t.isBot) {
+            const pool = UPGRADE_DEFS.filter(u => !u.requires);
+            const picked = pool[Math.floor(rnd(0, pool.length))];
+            t.upgrades = {};
+            if (picked.stackable) {
+              t.upgrades[picked.id] = 1;
+            } else {
+              t.upgrades[picked.id] = true;
+              if (picked.id === 'shield') t.shieldActive = true;
+            }
+            // Update bot display name: "Swift Thor", "Magnetic Zeus" etc.
+            const baseName = BOT_NAMES.find(n => t.baseName === n) || t.baseName || t.name.replace(/^\S+ /, '') || t.name;
+            t.baseName = baseName;
+            t.name = (UPGRADE_PREFIXES[picked.id] || picked.label) + ' ' + baseName;
+          } else {
+            t.upgrades = {};
+          }
         }
       }
     }
@@ -883,10 +916,11 @@
     }
 
     function drawMagnetRing(blob, cam, tick) {
-      if (!blob.upgrades || !blob.upgrades.magnet) return;
+      const magnetStacks = (blob.upgrades && blob.upgrades.magnet) || 0;
+      if (!magnetStacks) return;
       const sx = (blob.x - cam.x) * cam.zoom;
       const sy = (blob.y - cam.y) * cam.zoom;
-      const magnetR = blob.r * 3;
+      const magnetR = blob.r + magnetStacks * 80;
       const sr = magnetR * cam.zoom;
       // Animated dashed rotating ring
       ctx.save();
@@ -986,7 +1020,7 @@
           if (gs.bots.length < BOT_COUNT + Math.floor(steps / 2)) {
             const i = gs.bots.length;
             gs.bots.push(makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100),
-              COLORS[i % COLORS.length], 'Bot ' + (i + 1), true));
+              COLORS[i % COLORS.length], BOT_NAMES[i % BOT_NAMES.length], true));
           }
         }
       }
