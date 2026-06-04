@@ -637,20 +637,28 @@
       { id: 'magnet',  label: 'Pellet Magnet',    desc: '+80px flat pull range per stack. Cost rises.', cost: 70, icon: '🧲', stackable: true, requires: null },
       { id: 'shoot',   label: 'Shooter',          desc: 'Fire blobs (Space / shoot btn)',               cost: 100, icon: '💥', maxLevel: 1, requires: null },
       { id: 'regen',   label: 'Regeneration',     desc: 'Slowly regrow size over time',                cost: 90, icon: '💚', maxLevel: 1, requires: null },
+      { id: 'predator',   label: 'Super Predator',   desc: 'Eat anyone even 1 size smaller than you.',           cost: 1000, icon: '💀', maxLevel: 1, super: true, requires: null },
+      { id: 'supermagnet', label: 'Super Magnetism',  desc: 'Double magnet range + magnets also pull bots.',       cost: 1000, icon: '🌀', maxLevel: 1, super: true, requires: 'magnet' },
+      { id: 'superspeed',  label: 'Super Speed',       desc: 'Double speed boost stacks + double base speed.',     cost: 1000, icon: '🚀', maxLevel: 1, super: true, requires: 'speed' },
+      { id: 'discount',label: 'Discount',         desc: '-10% all upgrade costs per stack (max 5 = 50% off).', cost: 200, icon: '🏷️', stackable: true, maxStacks: 5, requires: null },
     ];
 
     // Upgrade prefix names for bots
     const UPGRADE_PREFIXES = {
-      speed:  'Swift',
-      zoom:   'Seer',
-      shield: 'Stalwart',
-      magnet: 'Magnetic',
-      shoot:  'Shooting',
-      regen:  'Undying',
+      speed:   'Swift',
+      zoom:    'Seer',
+      shield:  'Stalwart',
+      magnet:  'Magnetic',
+      shoot:   'Shooting',
+      regen:   'Undying',
+      predator:'Predator',
+      discount:'Thrifty',
+      supermagnet:'Vortex',
+      superspeed:'Blazing',
     };
 
     // Greek/Norse mythic bot names
-    const BOT_NAMES = ['Thor', 'Zeus', 'Ares', 'Hades', 'Poseidon', 'Apollo', 'Odin', 'Loki', 'Hermes', 'Athena', 'Freya', 'Anubis', 'Kratos'];
+    const BOT_NAMES = ['Thor', 'Zeus', 'Ares', 'Hades', 'Poseidon', 'Apollo', 'Odin', 'Loki', 'Hermes', 'Athena', 'Freya', 'Anubis'];
 
     const canvas = document.getElementById('canvas');
     const ctx = canvas.getContext('2d');
@@ -725,10 +733,36 @@
         if (!b.dead && b.r > bot.r * 1.1 && dist(bot, b) < 300) { tx += 2 * (bot.x - b.x); ty += 2 * (bot.y - b.y); }
       }
       const a = Math.atan2(ty - bot.y, tx - bot.x);
-      const spd = SPEED_BASE * (22 / Math.max(bot.r, 22)) * 0.85;
+      const botSpeedStacks = (bot.upgrades && bot.upgrades.speed) || 0;
+      const spd = SPEED_BASE * (22 / Math.max(bot.r, 22)) * 0.85 * Math.pow(1.2, botSpeedStacks);
       bot.vx = Math.cos(a) * spd; bot.vy = Math.sin(a) * spd;
       bot.x = clamp(bot.x + bot.vx, bot.r, W - bot.r);
       bot.y = clamp(bot.y + bot.vy, bot.r, H - bot.r);
+
+      // Bots with shoot upgrade fire at nearest threat/prey
+      if (bot.upgrades && bot.upgrades.shoot) {
+        if (!bot.shootCooldown) bot.shootCooldown = 0;
+        bot.shootCooldown--;
+        if (bot.shootCooldown <= 0 && bot.r - 22 >= 15) {
+          // Find nearest target that isn't much bigger (don't shoot at things we can eat by touching)
+          let nearestTarget = null, nearestDist = 350;
+          for (const candidate of [...gs.bots.filter(b => b !== bot && !b.dead), gs.me, ...(gs.p2 ? [gs.p2] : [])].filter(Boolean)) {
+            if (candidate.dead) continue;
+            const cd = dist(bot, candidate);
+            if (cd < nearestDist) { nearestDist = cd; nearestTarget = candidate; }
+          }
+          if (nearestTarget) {
+            const angle = Math.atan2(nearestTarget.y - bot.y, nearestTarget.x - bot.x);
+            gs.allProjectiles.push({
+              x: bot.x, y: bot.y,
+              vx: Math.cos(angle) * 7, vy: Math.sin(angle) * 7,
+              r: 7, color: bot.color, life: Math.ceil(bot.r * 3 / 7), owner: bot.id
+            });
+            bot.r = Math.max(22, bot.r - 4);
+            bot.shootCooldown = 40;
+          }
+        }
+      }
     }
 
     // ── PLAYER MOVEMENT ──
@@ -744,7 +778,10 @@
 
       if (dx || dy) {
         const speedStacks = blob.upgrades.speed || 0;
-        let speedMult = SPEED_BASE * (22 / Math.max(blob.r, 22)) * Math.pow(1.2, speedStacks);
+        const superSpeed = !!(blob.upgrades && blob.upgrades.superspeed);
+        const baseSpd = SPEED_BASE * (superSpeed ? 2 : 1);
+        const stackBonus = superSpeed ? speedStacks * 2 : speedStacks;
+        let speedMult = baseSpd * (22 / Math.max(blob.r, 22)) * Math.pow(1.2, stackBonus);
         const len = Math.hypot(dx, dy);
         blob.x = clamp(blob.x + dx / len * speedMult, blob.r, W - blob.r);
         blob.y = clamp(blob.y + dy / len * speedMult, blob.r, H - blob.r);
@@ -762,7 +799,7 @@
       const proj = {
         x: blob.x, y: blob.y,
         vx: Math.cos(angle) * 8, vy: Math.sin(angle) * 8,
-        r: 8, color: blob.color, life: 80, owner: 'me'
+        r: 8, color: blob.color, life: Math.ceil(blob.r * 3 / 8), owner: 'me'
       };
       gs.allProjectiles.push(proj);
       blob.r = Math.max(22, blob.r - 4); // cost a little size
@@ -782,7 +819,10 @@
       const dx = wx - gameState.me.x, dy = wy - gameState.me.y, len = Math.hypot(dx, dy) || 1;
       if (len > 5 && Math.hypot(touchDX, touchDY) < 0.05) {
         const _stacks = gameState.me.upgrades.speed || 0;
-        let spd = SPEED_BASE * (22 / Math.max(gameState.me.r, 22)) * Math.pow(1.2, _stacks);
+        const _super = !!(gameState.me.upgrades && gameState.me.upgrades.superspeed);
+        const _base = SPEED_BASE * (_super ? 2 : 1);
+        const _bonus = _super ? _stacks * 2 : _stacks;
+        let spd = _base * (22 / Math.max(gameState.me.r, 22)) * Math.pow(1.2, _bonus);
         gameState.me.x = clamp(gameState.me.x + dx / len * spd, gameState.me.r, W - gameState.me.r);
         gameState.me.y = clamp(gameState.me.y + dy / len * spd, gameState.me.r, H - gameState.me.r);
       }
@@ -797,7 +837,9 @@
       if (eater.dead) return;
       // Pellet magnet — pull pellets toward player, eat on contact
       const magnetStacks = (eater.upgrades && eater.upgrades.magnet) || 0;
-      const magnetRange = magnetStacks > 0 ? eater.r + magnetStacks * 80 : 0;
+      const superMagnet = !!(eater.upgrades && eater.upgrades.supermagnet);
+      const magnetMult = superMagnet ? 2 : 1;
+      const magnetRange = magnetStacks > 0 ? (eater.r + magnetStacks * 80) * magnetMult : 0;
 
       gs.pellets = gs.pellets.filter(p => {
         const d = dist(eater, p);
@@ -816,6 +858,20 @@
         return true;
       });
 
+      // Super Magnetism: also pull bots/players within range
+      if (superMagnet && magnetRange > 0 && eater.id === 'me') {
+        const pullTargets = [...gs.bots, ...(gs.p2 ? [gs.p2] : [])].filter(t => !t.dead);
+        for (const t of pullTargets) {
+          const d = dist(eater, t);
+          if (d < magnetRange && d > eater.r + t.r) {
+            const angle = Math.atan2(eater.y - t.y, eater.x - t.x);
+            const pull = 1.0 + (magnetRange - d) / magnetRange * 2.5;
+            t.x += Math.cos(angle) * pull;
+            t.y += Math.sin(angle) * pull;
+          }
+        }
+      }
+
       const targets = [...gs.bots,
         (gs.p2 && eater.id !== 'p2' ? gs.p2 : null),
         (gs.me && eater.id !== 'me' ? gs.me : null)
@@ -823,7 +879,8 @@
 
       for (const t of targets) {
         if (t.dead) continue;
-        const threshold = t.shieldActive ? 1.25 : 1.15;
+        const isPredator = eater.upgrades && eater.upgrades.predator;
+        const threshold = t.shieldActive ? 1.25 : (isPredator ? 1.001 : 1.15);
         if (dist(eater, t) < eater.r * 0.85 && eater.r > t.r * threshold) {
           if (t.shieldActive) {
             t.shieldActive = false; // shield absorbs one hit
@@ -862,8 +919,9 @@
       gs.allProjectiles = gs.allProjectiles.filter(pr => {
         pr.x += pr.vx; pr.y += pr.vy; pr.life--;
         if (pr.x < 0 || pr.x > W || pr.y < 0 || pr.y > H || pr.life <= 0) return false;
-        // Hit blobs
-        const targets = [...gs.bots,
+        // Hit blobs (exclude the shooter)
+        const targets = [
+          ...gs.bots.filter(b => b.id !== pr.owner),
           (gs.p2 && pr.owner !== 'p2' ? gs.p2 : null),
           (gs.me && pr.owner !== 'me' ? gs.me : null)
         ].filter(Boolean);
@@ -901,7 +959,14 @@
 
       ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
       ctx.fillStyle = b.color; ctx.fill();
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+      // Tint ring: green = I can eat them, red = they can eat me
+      if (b._canEatMe) {
+        ctx.strokeStyle = 'rgba(255,80,80,0.7)'; ctx.lineWidth = 3; ctx.stroke();
+      } else if (b._iCanEat) {
+        ctx.strokeStyle = 'rgba(80,255,120,0.7)'; ctx.lineWidth = 3; ctx.stroke();
+      } else {
+        ctx.strokeStyle = 'rgba(255,255,255,0.25)'; ctx.lineWidth = 2; ctx.stroke();
+      }
 
       const fontSize = Math.max(10, Math.min(sr * 0.55, 18));
       ctx.fillStyle = '#fff';
@@ -915,13 +980,16 @@
       ctx.fillText(Math.round(b.r - 22), sx, sy + sr * 0.38);
     }
 
-    function drawMagnetRing(blob, cam, tick) {
+    function drawMagnetRing(blob, cam, tick, isEnemy) {
       const magnetStacks = (blob.upgrades && blob.upgrades.magnet) || 0;
       if (!magnetStacks) return;
       const sx = (blob.x - cam.x) * cam.zoom;
       const sy = (blob.y - cam.y) * cam.zoom;
-      const magnetR = blob.r + magnetStacks * 80;
+      const superMagnetRing = !!(blob.upgrades && blob.upgrades.supermagnet);
+      const magnetR = (blob.r + magnetStacks * 80) * (superMagnetRing ? 2 : 1);
       const sr = magnetR * cam.zoom;
+      const ringColor = isEnemy ? 'rgba(255,100,100,0.4)' : 'rgba(100,180,255,0.35)';
+      const glowColor = isEnemy ? 'rgba(255,100,100,0.07)' : 'rgba(100,180,255,0.06)';
       // Animated dashed rotating ring
       ctx.save();
       ctx.translate(sx, sy);
@@ -929,15 +997,15 @@
       ctx.beginPath();
       ctx.arc(0, 0, sr, 0, Math.PI * 2);
       ctx.setLineDash([8, 12]);
-      ctx.strokeStyle = 'rgba(100,180,255,0.35)';
+      ctx.strokeStyle = ringColor;
       ctx.lineWidth = 1.5;
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
       // Subtle inner glow fill
       const grad = ctx.createRadialGradient(sx, sy, blob.r * cam.zoom, sx, sy, sr);
-      grad.addColorStop(0, 'rgba(100,180,255,0.0)');
-      grad.addColorStop(1, 'rgba(100,180,255,0.06)');
+      grad.addColorStop(0, 'rgba(0,0,0,0)');
+      grad.addColorStop(1, glowColor);
       ctx.beginPath();
       ctx.arc(sx, sy, sr, 0, Math.PI * 2);
       ctx.fillStyle = grad;
@@ -983,7 +1051,10 @@
       const affordable = UPGRADE_DEFS.filter(u => {
         if (gs.me.upgrades[u.id]) return false;
         if (u.requires && !gs.me.upgrades[u.requires]) return false;
-        return size >= u.cost;
+        const dStacks = Math.min(gs.me.upgrades.discount || 0, 5);
+        const dMult = 1 - dStacks * 0.1;
+        const hintCost = Math.max(1, Math.round(u.cost * dMult));
+        return size >= hintCost;
       });
       if (affordable.length > 0) {
         ctx.fillStyle = 'rgba(232,160,48,0.92)';
@@ -1062,9 +1133,20 @@
         ctx.fillStyle = p.color; ctx.fill();
       }
 
-      for (const b of gs.bots) drawBlob(b, cam);
-      if (gs.p2) drawBlob(gs.p2, cam);
-      drawMagnetRing(gs.me, cam, gs.tick);
+      // Compute edibility tints relative to player
+      const me = gs.me;
+      const mePredator = me.upgrades && me.upgrades.predator;
+      for (const b of [...gs.bots, ...(gs.p2 ? [gs.p2] : [])]) {
+        if (b.dead) { b._canEatMe = false; b._iCanEat = false; continue; }
+        const bPredator = b.upgrades && b.upgrades.predator;
+        const myThreshold = bPredator ? 1.001 : 1.15;
+        const theirThreshold = mePredator ? 1.001 : 1.15;
+        b._canEatMe = b.r > me.r * myThreshold;
+        b._iCanEat  = me.r > b.r * theirThreshold;
+      }
+      for (const b of gs.bots) { drawMagnetRing(b, cam, gs.tick, true); drawBlob(b, cam); }
+      if (gs.p2) { drawMagnetRing(gs.p2, cam, gs.tick, true); drawBlob(gs.p2, cam); }
+      drawMagnetRing(gs.me, cam, gs.tick, false);
       drawBlob(gs.me, cam);
       drawProjectiles(gs, cam);
       drawMinimap(gs);
@@ -1119,8 +1201,12 @@
         const owned = !u.stackable && !!gs.me.upgrades[u.id];
         const locked = u.requires && !gs.me.upgrades[u.requires];
         // For stackable: cost increases by 50% each stack
-        const effectiveCost = u.stackable ? Math.round(u.cost * Math.pow(1.5, stacks)) : u.cost;
-        const canAfford = size >= effectiveCost;
+        const discountStacks = Math.min(gs.me.upgrades.discount || 0, 5);
+        const discountMult = 1 - discountStacks * 0.1;
+        const rawCost = u.stackable ? Math.round(u.cost * Math.pow(1.5, stacks)) : u.cost;
+        const effectiveCost = (u.id === 'discount' || u.super) ? rawCost : Math.max(1, Math.round(rawCost * discountMult));
+        const atCap = u.stackable && u.maxStacks && stacks >= u.maxStacks;
+        const canAfford = size >= effectiveCost && !atCap;
         const div = document.createElement('div');
         div.style.cssText = `display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:6px;border:1px solid rgba(255,255,255,${owned?'0.2':'0.07'});background:${owned?'rgba(100,200,100,0.08)':stacks>0?'rgba(100,200,255,0.06)':'var(--bg)'};opacity:${locked?'0.4':'1'}`;
         const icon = document.createElement('span');
@@ -1149,7 +1235,10 @@
           btn.onclick = () => {
             gs.me.r = Math.max(22, gs.me.r - effectiveCost);
             if (u.stackable) {
-              gs.me.upgrades[u.id] = (gs.me.upgrades[u.id] || 0) + 1;
+              const currentStacks = gs.me.upgrades[u.id] || 0;
+              const cap = u.maxStacks || Infinity;
+              if (currentStacks >= cap) return;
+              gs.me.upgrades[u.id] = currentStacks + 1;
             } else {
               gs.me.upgrades[u.id] = true;
             }
@@ -1288,7 +1377,14 @@
     window.addEventListener('keydown', e => {
       keys[e.key] = true;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
-      if ((e.key === 'u' || e.key === 'U') && gameState) openUpgradeShop();
+      if ((e.key === 'u' || e.key === 'U') && gameState) {
+        const panel = document.getElementById('upgrade-panel');
+        if (panel.style.display === 'none' || panel.style.display === '') {
+          openUpgradeShop();
+        } else {
+          closeUpgradeShop();
+        }
+      }
     });
     window.addEventListener('keyup', e => { keys[e.key] = false; });
   </script>
