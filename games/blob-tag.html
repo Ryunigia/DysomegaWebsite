@@ -947,21 +947,43 @@
           t.r = 22;
           t.score = Math.max(0, t.score - 3);
           t.x = rnd(100, W - 100); t.y = rnd(100, H - 100);
-          // Bots respawn with one random upgrade (stackable ones get +1)
+          // Bots keep all upgrades on death and gain one more (they grow stronger)
           if (t.isBot) {
-            const pool = UPGRADE_DEFS.filter(u => !u.requires);
-            const picked = pool[Math.floor(rnd(0, pool.length))];
-            t.upgrades = {};
-            if (picked.stackable) {
-              t.upgrades[picked.id] = 1;
-            } else {
-              t.upgrades[picked.id] = true;
-              if (picked.id === 'shield') t.shieldActive = true;
+            // Helper: grant one random upgrade to the bot
+            function grantBotUpgrade(bot) {
+              // Pool: no-requires upgrades + supers if prereq already owned
+              const pool = UPGRADE_DEFS.filter(u => {
+                if (u.requires && !bot.upgrades[u.requires]) return false;
+                // Don't add non-stackable dupes
+                if (!u.stackable && bot.upgrades[u.id]) return false;
+                // Cap stackables at reasonable level
+                if (u.stackable && (bot.upgrades[u.id] || 0) >= 5) return false;
+                return true;
+              });
+              if (!pool.length) return null;
+              const picked = pool[Math.floor(rnd(0, pool.length))];
+              if (picked.stackable) {
+                bot.upgrades[picked.id] = (bot.upgrades[picked.id] || 0) + 1;
+              } else {
+                bot.upgrades[picked.id] = true;
+                if (picked.id === 'shield') bot.shieldActive = true;
+              }
+              return picked;
             }
-            // Update bot display name: "Swift Thor", "Magnetic Zeus" etc.
-            const baseName = BOT_NAMES.find(n => t.baseName === n) || t.baseName || t.name.replace(/^\S+ /, '') || t.name;
-            t.baseName = baseName;
-            t.name = (UPGRADE_PREFIXES[picked.id] || picked.label) + ' ' + baseName;
+
+            // Grant one upgrade, then extra if they have discount (simulating "they got a deal")
+            const picked = grantBotUpgrade(t);
+            if (t.upgrades.discount) {
+              grantBotUpgrade(t); // first discount bonus
+              grantBotUpgrade(t); // second discount bonus
+            }
+
+            // Update name to reflect last upgrade gained
+            if (picked) {
+              const baseName = t.baseName || t.name;
+              t.baseName = baseName;
+              t.name = (UPGRADE_PREFIXES[picked.id] || picked.label) + ' ' + baseName;
+            }
           } else {
             t.upgrades = {};
           }
@@ -1257,10 +1279,34 @@
       const sx = mw / W, sy = mh / H;
       ctx.fillStyle = 'rgba(0,0,0,0.5)';
       ctx.beginPath(); ctx.roundRect(mx, my, mw, mh, 5); ctx.fill();
+
+      // Decoys — pulsing gold dots
+      if (gs.decoys) {
+        const pulse = 0.5 + 0.5 * Math.sin(gs.tick * 0.1);
+        for (const d of gs.decoys) {
+          const dr = Math.max(2, d.r * sx);
+          ctx.beginPath(); ctx.arc(mx + d.x * sx, my + d.y * sy, dr, 0, Math.PI * 2);
+          ctx.fillStyle = d.color;
+          ctx.globalAlpha = 0.5 + pulse * 0.3;
+          ctx.fill();
+          ctx.globalAlpha = 1;
+          // gold outline so decoy is distinct
+          ctx.beginPath(); ctx.arc(mx + d.x * sx, my + d.y * sy, dr + 1, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(255,220,80,${0.5 + pulse * 0.4})`; ctx.lineWidth = 1; ctx.stroke();
+        }
+      }
+
+      // Blobs — radius scaled correctly to current world size (no fudge factor)
       for (const b of [gs.me, ...(gs.p2 ? [gs.p2] : []), ...gs.bots]) {
         if (b.dead) continue;
-        ctx.beginPath(); ctx.arc(mx + b.x * sx, my + b.y * sy, Math.max(2, b.r * sx * 2), 0, Math.PI * 2);
+        // Use actual world-scale radius, min 2px so tiny blobs are still visible
+        const br = Math.max(2, b.r * sx);
+        ctx.beginPath(); ctx.arc(mx + b.x * sx, my + b.y * sy, br, 0, Math.PI * 2);
         ctx.fillStyle = b.color; ctx.fill();
+        // White outline on player for clarity
+        if (b.id === 'me') {
+          ctx.strokeStyle = 'rgba(255,255,255,0.7)'; ctx.lineWidth = 1.5; ctx.stroke();
+        }
       }
     }
 

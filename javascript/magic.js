@@ -1,9 +1,9 @@
-var c = document.getElementById("myCanvas");
+var c = document.getElementById("hero-magic");
 var ctx = c.getContext("2d");
 //c.width = window.innerWidth;
-c.width = 1080;
-c.height = 256;
-var canvasScale = 1.5;
+c.width = 2000;
+c.height = 960;
+var canvasScale = 1.0;
 ctx.scale(canvasScale,canvasScale);
 
 // calc
@@ -14,8 +14,14 @@ var startXOffset = centerX * 1.0;
 // global vars
 var dot2DArr = [];
 var imageObj = new Image();
-var drawwidth = 4;
+var drawwidth = 8;
 var lastUpdate = Date.now();
+var delayBetweenAnimations = 5000;
+var delayInitialAnimations = 5000;
+var animationPlaytime = 10000;
+var generalFrameInterval = 100;
+var animationPlaySpeedMultiplier = 0.001;
+var intervalTarget;
 
 // load image
 imageObj.onload = function() 
@@ -24,10 +30,7 @@ imageObj.onload = function()
 	var step = drawwidth * 1;
 	var imageWidth = this.width;
 	var imageHeight = this.height;
-	// start offset move
-	//console.log(imageWidth);
 	startXOffset -= imageWidth * 0.5;
-	// dotarray to be made
 	for(var y = 0; y < imageHeight; y+=step, offset *= -1)
 	{
 			var dotArr = [];
@@ -40,15 +43,9 @@ imageObj.onload = function()
 			dot2DArr.push(dotArr);
 	}
 	RenderImage();
-	setTimeout(Animate, 500);
+	setTimeout(Animate, delayInitialAnimations);
 };
-//console.log(dotArray.length);
-//console.log(dot2DArr);
-imageObj.src = 'https://dysomega.com/images/Dysomega_Banner.png';  
-
-	//for(var x = 0; x < imageObj.width; x+=1)
-			//for(var y = 0; y < imageObj.height; y+=1)
-				//console.log(dotArr2D[0][0]);
+imageObj.src = 'images/Dysomega_Banner.png';  
 
 function RenderImage()
 {	
@@ -70,21 +67,26 @@ function Animate()
 {
 	console.log("Activating Animation " + animationCount);
 		// select a random animation
-	if (animationCount == 0)
-		setTimeout(MicroDistortions, 3000);
-	else if (animationCount == 1)
-		setTimeout(RestoreDistortions, 3000);
-	else if (animationCount == 2)
-		setTimeout(BreakApart, 3000);
-	else if (animationCount == 3)
-		setTimeout(Restore, 3000);
-	// reset
-	else 
-		{
+	switch (animationCount)
+	{
+		case 0:
+			PlayMicroDistortions();
+			break;
+		case 1:
+			PlayRestoreDistortions();
+			break;
+		case 2:
+			StartDisplacements();
+			break;
+		case 3:
+			PlayRestore();	
+			break;
+		default:
 			animationCount = -1;
-			setTimeout(Animate, 5000);
+			setTimeout(Animate, delayBetweenAnimations);
 			console.log("Resetting");
-		}
+			break;
+	}
 	
 	++animationCount;
 }
@@ -94,34 +96,38 @@ function StopInterval()
 	clearInterval(intervalTarget);
 	
 	// callback to animate
-	Animate();
+	setTimeout(Animate, delayBetweenAnimations);
 }
-var intervalTarget;
-function BreakApart()
+
+function StartDisplacements()
 {
 		// break the logo have it fall down in pieces
 		for(var y = 0; y < dot2DArr.length; y+=1)
 			for(var x = 0; x < dot2DArr[y].length; x+=1)
 			{
-					//var dot = dot2DArr[y][x].y += 1;
-					dot2DArr[y][x].vX = (Math.random() * 2) - 1;
-					dot2DArr[y][x].vY = Math.random() * 16;
-					//dot2DArr[y][x].vX = -100.0;
+				// see if skipping randomly improves?
+				if (y < dot2DArr.length * 0.1)
+				{
+					dot2DArr[y][x].vX = 0;
+					dot2DArr[y][x].vY = 0;
+				}
+				else
+				{
+					dot2DArr[y][x].vX = (Math.random() * 0.1) - 0.05;
+					dot2DArr[y][x].vY = Math.random() * 0.5 + (y * 0.02);
+					dot2DArr[y][x].vY *= dot2DArr[y][x].vY;
+				}
 			}
 		// loop
-		//RenderImage();
-		//setTimeout(Animate, 500);
 		lastUpdate = Date.now();
-		intervalTarget = setInterval(SolveVelocities, 100);
-		setTimeout(StopInterval, 8000);
+		intervalTarget = setInterval(SolveDisplacement, generalFrameInterval);
+		setTimeout(StopInterval, animationPlaytime);
 }
-function SolveVelocities()
+function SolveDisplacement()
 {
 	// dt
-	var now = Date.now();
-	var dt = now - lastUpdate;
-	dt *= 0.001;
-	lastUpdate = now;
+	var dt = CalculateCurrentDT();
+	
 	// move all
 	for(var y = 0; y < dot2DArr.length; y+=1)
 		for(var x = 0; x < dot2DArr[y].length; x+=1)
@@ -133,36 +139,29 @@ function SolveVelocities()
 	RenderImage();
 }
 // MicroDistortions
-function MicroDistortions()
+function PlayMicroDistortions()
 {
 		// break the logo have it fall down in pieces
 		for(var y = 0; y < dot2DArr.length; y+=1)
 			for(var x = 0; x < dot2DArr[y].length; x+=1)
 			{
-					//var dot = dot2DArr[y][x].y += 1;
-					dot2DArr[y][x].vX = (Math.random() * 2) - 1;
-					dot2DArr[y][x].vY = Math.random();
-					//dot2DArr[y][x].vX = -100.0;
+				dot2DArr[y][x].vX = (Math.random() * 2) - 1;
+				dot2DArr[y][x].vY = Math.random();
 			}
 		// loop
-		//RenderImage();
-		//setTimeout(Animate, 500);
 		lastUpdate = Date.now();
-		intervalTarget = setInterval(SolveVelocitiesDistortions, 100);
-		setTimeout(StopInterval, 10000);
+		intervalTarget = setInterval(SolveVelocitiesDistortions, generalFrameInterval);
+		setTimeout(StopInterval, animationPlaytime);
 }
 function SolveVelocitiesDistortions()
 {
 	// dt
-	var now = Date.now();
-	var dt = now - lastUpdate;
-	dt *= 0.001;
-	lastUpdate = now;
+	var dt = CalculateCurrentDT();
+	
 	// move all
 	for(var y = 0; y < dot2DArr.length; y+=1)
 		for(var x = 0; x < dot2DArr[y].length; x+=1)
 		{
-			//var dot = dot2DArr[y][x].y += 1;
 			dot2DArr[y][x].srcX += dot2DArr[y][x].vX * dt;
 			dot2DArr[y][x].srcY += dot2DArr[y][x].vY * dt;
 		}
@@ -170,20 +169,18 @@ function SolveVelocitiesDistortions()
 }
 
 // RestoreDistortions
-function RestoreDistortions()
+function PlayRestoreDistortions()
 {
 		// loop
 		lastUpdate = Date.now();
-		intervalTarget = setInterval(RestoreDistortionsTick, 100);
-		setTimeout(StopInterval, 5000);
+		intervalTarget = setInterval(RestoreDistortionsTick, generalFrameInterval);
+		setTimeout(ResetAll, animationPlaytime);
 }
 function RestoreDistortionsTick()
 {
 	// dt
-	var now = Date.now();
-	var dt = now - lastUpdate;
-	dt *= 0.001;
-	lastUpdate = now;
+	var dt = CalculateCurrentDT();
+	
 	// move all
 	for(var y = 0; y < dot2DArr.length; y+=1)
 		for(var x = 0; x < dot2DArr[y].length; x+=1)
@@ -196,21 +193,35 @@ function RestoreDistortionsTick()
 	RenderImage();
 }
 
+function ResetAll()
+{
+	// reset all
+	StopInterval();
+	for(var y = 0; y < dot2DArr.length; y+=1)
+		for(var x = 0; x < dot2DArr[y].length; x+=1)
+		{
+			dot2DArr[y][x].srcX = dot2DArr[y][x].origSX;
+			dot2DArr[y][x].srcY = dot2DArr[y][x].origSY;
+			dot2DArr[y][x].x = dot2DArr[y][x].origX;
+			dot2DArr[y][x].y = dot2DArr[y][x].origY;
+
+		}
+	RenderImage();
+}
+
 // restore blend back to orig poss
-function Restore()
+function PlayRestore()
 {
 		// loop
 		lastUpdate = Date.now();
-		intervalTarget = setInterval(RestoreTick, 100);
-		setTimeout(StopInterval, 5000);
+		intervalTarget = setInterval(RestoreDisplacements, generalFrameInterval);
+		setTimeout(ResetAll, animationPlaytime);
 }
-function RestoreTick()
+function RestoreDisplacements()
 {
 	// dt
-	var now = Date.now();
-	var dt = now - lastUpdate;
-	dt *= 0.001;
-	lastUpdate = now;
+	var dt = CalculateCurrentDT();
+	
 	// move all
 	for(var y = 0; y < dot2DArr.length; y+=1)
 		for(var x = 0; x < dot2DArr[y].length; x+=1)
@@ -221,6 +232,15 @@ function RestoreTick()
 			dot2DArr[y][x].y += yDir * dt;
 		}
 	RenderImage();
+}
+
+function CalculateCurrentDT()
+{
+	var now = Date.now();
+	var dt = now - lastUpdate;
+	dt *= animationPlaySpeedMultiplier;
+	lastUpdate = now;
+	return dt;
 }
 
 // glitch

@@ -200,6 +200,13 @@
       align-items: flex-start;
       transition: border-color 0.2s;
     }
+
+    #hero-magic {
+      width: 100%;
+      scale: 150%;
+      text-align:center;
+    }
+    
     .archive-card:hover { border-color: var(--border-accent); }
     .archive-card-icon { font-size: 1.5rem; flex-shrink: 0; margin-top: 2px; }
     .archive-card h4 { font-size: 14px; font-weight: 700; margin-bottom: 0.25rem; }
@@ -273,8 +280,8 @@
   <div class="hero-bg"></div>
   <div class="hero-grid"></div>
   <div class="hero-content">
-    
-    <h1 class="hero-title fade-up fade-up-2">DYS<span class="accent">OMEGA</span></h1>
+    <canvas id="hero-magic"></canvas>
+    <script src="javascript/magic.js"></script>
     <p class="hero-sub fade-up fade-up-3">A small Belgian indie game studio. We make unordinary games.</p>
     <div class="hero-cta fade-up fade-up-4">
       <a href="#play" class="btn btn-primary">▶ Play Free Games</a>
