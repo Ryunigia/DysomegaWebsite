@@ -304,8 +304,14 @@
       border: 1px solid var(--border);
       background: #1a1a2e;
       cursor: none;
-      max-width: 100%;
+      width: min(660px, 100vw - 2rem);
       height: auto;
+      aspect-ratio: 660 / 480;
+    }
+    #screen-game {
+      width: 100%;
+      max-width: min(660px, 100vw - 2rem);
+      margin: 0 auto;
     }
 
     .screen {
@@ -450,7 +456,7 @@
       }
 
       canvas {
-        width: 100% !important;
+        width: calc(100vw - 2rem) !important;
         height: auto !important;
       }
 
@@ -509,7 +515,7 @@
             </div>
           </div>
           <div id="screen-game" class="screen">
-            <canvas id="canvas" width="660" height="480"></canvas>
+            <canvas id="canvas" width="660" height="480" style="width:100%;height:auto;display:block;max-height:calc(100vh - 120px);object-fit:contain;"></canvas>
             <div class="hud">
               <span>You: <b id="hud-you">—</b></span>
               <span id="hud-p2-wrap" style="display:none">Friend: <b id="hud-p2">—</b></span>
@@ -590,15 +596,19 @@
       <span style="font-size:22px;pointer-events:none;">💥</span>
       <span style="font-size:9px;color:rgba(226,75,74,0.9);pointer-events:none;font-family:sans-serif;font-weight:700;">SHOOT</span>
     </div>
+    <div id="dash-btn-touch" style="display:none;position:absolute;bottom:94px;right:100px;width:62px;height:62px;border-radius:50%;background:rgba(100,200,255,0.25);border:2px solid rgba(100,200,255,0.6);pointer-events:all;touch-action:none;align-items:center;justify-content:center;flex-direction:column;gap:1px;">
+      <span style="font-size:22px;pointer-events:none;">💨</span>
+      <span style="font-size:9px;color:rgba(100,200,255,0.9);pointer-events:none;font-family:sans-serif;font-weight:700;">DASH</span>
+    </div>
   </div>
 
   <!-- Upgrade shop panel -->
-  <div id="upgrade-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:300;background:#111118;border:1px solid rgba(232,160,48,0.4);border-radius:10px;padding:1.5rem;min-width:300px;max-width:92vw;box-shadow:0 8px 40px rgba(0,0,0,0.7);">
+  <div id="upgrade-panel" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:300;background:#111118;border:1px solid rgba(232,160,48,0.4);border-radius:10px;padding:1rem 1.2rem 1rem;width:min(380px,94vw);max-height:85vh;overflow-y:auto;box-shadow:0 8px 40px rgba(0,0,0,0.7);-webkit-overflow-scrolling:touch;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
       <span style="font-family:'Syne',sans-serif;font-weight:800;font-size:18px;color:#e8e6df;">⚗️ Upgrades</span>
       <span id="upgrade-size-display" style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#AAAAAA;"></span>
     </div>
-    <div id="upgrade-list" style="display:flex;flex-direction:column;gap:8px;"></div>
+    <div id="upgrade-list" style="display:flex;flex-direction:column;gap:6px;"></div>
     <button id="upgrade-close" style="margin-top:1rem;width:100%;">Close</button>
   </div>
   <div id="upgrade-overlay" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.55);z-index:290;"></div>
@@ -626,6 +636,8 @@
     let peer = null, conn = null, isHost = false, gameState = null, animId = null, keys = {}, lastSent = 0;
     let touchDX = 0, touchDY = 0; // normalized touch joystick input
     let currentZoom = 1.0; // smoothly lerped toward target zoom
+    let dashCooldown = 0;
+    let lastMoveAngle = 0; // direction of last movement input
     let shootCooldown = 0;
     let upgradeNotifTimer = 0, upgradeNotifText = '';
 
@@ -640,6 +652,7 @@
       { id: 'predator',   label: 'Super Predator',   desc: 'Eat anyone even 1 size smaller than you.',           cost: 1000, icon: '💀', maxLevel: 1, super: true, requires: null },
       { id: 'supermagnet', label: 'Super Magnetism',  desc: 'Double magnet range + magnets also pull bots.',       cost: 1000, icon: '🌀', maxLevel: 1, super: true, requires: 'magnet' },
       { id: 'superspeed',  label: 'Super Speed',       desc: 'Double speed boost stacks + double base speed.',     cost: 1000, icon: '🚀', maxLevel: 1, super: true, requires: 'speed' },
+      { id: 'dash',        label: 'Dash',              desc: 'Split in half — leave a decoy, dash forward. More size = further dash. [Q / Dash btn]', cost: 1000, icon: '💨', maxLevel: 1, super: true, requires: null },
       { id: 'discount',label: 'Discount',         desc: '-10% all upgrade costs per stack (max 5 = 50% off).', cost: 200, icon: '🏷️', stackable: true, maxStacks: 5, requires: null },
     ];
 
@@ -655,6 +668,7 @@
       discount:'Thrifty',
       supermagnet:'Vortex',
       superspeed:'Blazing',
+      dash:'Phantom',
     };
 
     // Greek/Norse mythic bot names
@@ -671,7 +685,7 @@
 
     function makeBlob(id, x, y, color, name, isBot) {
       return { id, x, y, r: 22, color, name, baseName: name, isBot, vx: 0, vy: 0, score: 0, dead: false,
-               upgrades: {}, projectiles: [], shieldActive: false };
+               upgrades: {}, projectiles: [], shieldActive: false, trail: [] };
     }
 
     function makePellet() {
@@ -687,7 +701,8 @@
           makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100), COLORS[(myIndex + i + 2) % COLORS.length], BOT_NAMES[i % BOT_NAMES.length], true)),
         pellets: Array.from({ length: PELLET_COUNT }, makePellet),
         tick: 0,
-        allProjectiles: []
+        allProjectiles: [],
+        decoys: []
       };
     }
 
@@ -785,6 +800,14 @@
         const len = Math.hypot(dx, dy);
         blob.x = clamp(blob.x + dx / len * speedMult, blob.r, W - blob.r);
         blob.y = clamp(blob.y + dy / len * speedMult, blob.r, H - blob.r);
+        lastMoveAngle = Math.atan2(dy, dx); // track last movement direction
+      }
+      // Apply dash impulse (decays over dashTicks frames)
+      if (blob._dashTicks > 0) {
+        blob.x = clamp(blob.x + blob._dashVx, blob.r, W - blob.r);
+        blob.y = clamp(blob.y + blob._dashVy, blob.r, H - blob.r);
+        blob._dashVx *= 0.88; blob._dashVy *= 0.88; // eases out
+        blob._dashTicks--;
       }
     }
 
@@ -794,8 +817,8 @@
       if (!blob.upgrades.shoot) return;
       if (shootCooldown > 0) return;
       if (blob.r - 22 < 15) return; // need some size to shoot
-      // Find direction: toward mouse or last move direction
-      let angle = shootAngle !== null ? shootAngle : 0;
+      // Fire in last movement direction
+      let angle = lastMoveAngle;
       const proj = {
         x: blob.x, y: blob.y,
         vx: Math.cos(angle) * 8, vy: Math.sin(angle) * 8,
@@ -806,6 +829,39 @@
       shootCooldown = 25;
     }
 
+    function tryDash(gs) {
+      const blob = gs.me;
+      if (!blob.upgrades.dash) return;
+      if (dashCooldown > 0) return;
+      const size = blob.r - 22;
+      if (size < 20) return; // need at least 20 size to dash
+      // Split: leave half size behind as decoy
+      const sacrifice = Math.floor(size / 2);
+      const decoyR = 22 + sacrifice;
+      // Dash speed: more sacrifice = faster/longer dash impulse
+      const dashSpeed = 36 + sacrifice * 0.45;
+      const dashTicks = Math.round(14 + sacrifice * 0.36); // how long the impulse lasts
+      const angle = lastMoveAngle;
+      // Spawn decoy behind the player (opposite to dash direction) so player doesn't instantly eat it
+      const offsetDist = blob.r + decoyR + 5;
+      gs.decoys.push({
+        x: clamp(blob.x - Math.cos(angle) * offsetDist, decoyR, W - decoyR),
+        y: clamp(blob.y - Math.sin(angle) * offsetDist, decoyR, H - decoyR),
+        r: decoyR, color: blob.color,
+        vx: 0, vy: 0,
+        grace: 40, // ~0.6s before it can be eaten at all
+      });
+      // Shrink player
+      blob.r = Math.max(22, blob.r - sacrifice);
+      // Apply dash as a velocity impulse (smooth, not teleport)
+      blob._dashVx = Math.cos(angle) * dashSpeed;
+      blob._dashVy = Math.sin(angle) * dashSpeed;
+      blob._dashTicks = dashTicks;
+      dashCooldown = 90;
+      upgradeNotifText = '💨 Dash!';
+      upgradeNotifTimer = 30;
+    }
+
     let shootAngle = null;
     canvas.addEventListener('mousemove', e => {
       if (!gameState) return;
@@ -814,8 +870,7 @@
       const mx = (e.clientX - rect.left) * scaleX, my = (e.clientY - rect.top) * scaleY;
       const cam = getCam(gameState.me);
       const wx = mx / cam.zoom + cam.x, wy = my / cam.zoom + cam.y;
-      shootAngle = Math.atan2(wy - gameState.me.y, wx - gameState.me.x);
-      // Also move toward mouse
+      // Move toward mouse (shootAngle removed; shoot/dash use lastMoveAngle)
       const dx = wx - gameState.me.x, dy = wy - gameState.me.y, len = Math.hypot(dx, dy) || 1;
       if (len > 5 && Math.hypot(touchDX, touchDY) < 0.05) {
         const _stacks = gameState.me.upgrades.speed || 0;
@@ -825,6 +880,7 @@
         let spd = _base * (22 / Math.max(gameState.me.r, 22)) * Math.pow(1.2, _bonus);
         gameState.me.x = clamp(gameState.me.x + dx / len * spd, gameState.me.r, W - gameState.me.r);
         gameState.me.y = clamp(gameState.me.y + dy / len * spd, gameState.me.r, H - gameState.me.r);
+        lastMoveAngle = Math.atan2(dy, dx); // update direction for shoot/dash
       }
     });
 
@@ -936,6 +992,37 @@
       });
     }
 
+    // ── DECOYS ──
+    function updateDecoys(gs) {
+      if (!gs.decoys) gs.decoys = [];
+      const newPellets = [];
+      gs.decoys = gs.decoys.filter(d => {
+        // Player can eat decoy if player.r > decoy.r * 0.5 (more than half size)
+        // Bots/p2 still need normal 15% bigger threshold
+        if (d.grace > 0) { d.grace--; return true; }
+        const eaters = [...gs.bots, ...(gs.p2 ? [gs.p2] : []), gs.me];
+        for (const e of eaters) {
+          if (e.dead) continue;
+          const threshold = (e.id === 'me') ? 0.5 : 1.15;
+          if (dist(e, d) < e.r * 0.85 && e.r > d.r * threshold) {
+            e.r += d.r * 0.4;
+            e.score += 3;
+            return false; // eaten
+          }
+        }
+        // If decoy shrinks below pellet size, convert to pellets
+        if (d.r <= 14) {
+          for (let i = 0; i < 3; i++) newPellets.push({
+            x: d.x + rnd(-20, 20), y: d.y + rnd(-20, 20),
+            r: 7, color: d.color
+          });
+          return false;
+        }
+        return true; // permanent, stays until eaten
+      });
+      gs.pellets.push(...newPellets);
+    }
+
     // ── REGEN ──
     function applyRegen(gs) {
       if (gs.me.upgrades.regen && gs.tick % 60 === 0) {
@@ -944,6 +1031,76 @@
     }
 
     // ── DRAWING ──
+    function drawTrail(b, cam) {
+      const isSpeed = b.upgrades && b.upgrades.superspeed;
+      const isPred  = b.upgrades && b.upgrades.predator;
+      const sx = (b.x - cam.x) * cam.zoom;
+      const sy = (b.y - cam.y) * cam.zoom;
+      const sr = b.r * cam.zoom;
+
+      // ── Super Speed: motion blur ghost trail ──
+      if (isSpeed && b.trail && b.trail.length >= 2) {
+        for (let i = 0; i < b.trail.length; i++) {
+          const t = b.trail[i];
+          const alpha = i / b.trail.length;
+          const tx = (t.x - cam.x) * cam.zoom;
+          const ty = (t.y - cam.y) * cam.zoom;
+          const tr = t.r * cam.zoom * (0.3 + alpha * 0.55);
+          if (tx < -tr*2 || tx > CVDW+tr*2 || ty < -tr*2 || ty > CVDH+tr*2) continue;
+          ctx.beginPath();
+          ctx.arc(tx, ty, Math.max(1, tr), 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(120,220,255,${alpha * 0.45})`;
+          ctx.fill();
+        }
+      }
+
+      // ── Super Predator: pulsing dark aura + orbiting shadow wisps ──
+      if (isPred) {
+        const tick = b._predTick || 0;
+
+        // Outer pulsing dark aura — breathes in/out
+        const pulse = 0.5 + 0.5 * Math.sin(tick * 0.06);
+        const auraR = sr * (1.35 + pulse * 0.25);
+        const auraGrad = ctx.createRadialGradient(sx, sy, sr * 0.9, sx, sy, auraR);
+        auraGrad.addColorStop(0, `rgba(60,0,80,${0.55 + pulse * 0.2})`);
+        auraGrad.addColorStop(0.6, `rgba(30,0,50,${0.25 + pulse * 0.1})`);
+        auraGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath();
+        ctx.arc(sx, sy, auraR, 0, Math.PI * 2);
+        ctx.fillStyle = auraGrad;
+        ctx.fill();
+
+        // Orbiting shadow wisps — 4 tendrils rotating at different speeds
+        const wispCount = 4;
+        for (let w = 0; w < wispCount; w++) {
+          const baseAngle = (w / wispCount) * Math.PI * 2;
+          const angle = baseAngle + tick * 0.04 + w * 0.3;
+          const orbitR = sr * (1.1 + 0.15 * Math.sin(tick * 0.08 + w));
+          const wx = sx + Math.cos(angle) * orbitR;
+          const wy = sy + Math.sin(angle) * orbitR;
+          const wispR = sr * (0.18 + 0.06 * Math.sin(tick * 0.1 + w * 1.3));
+          // Wisp glow
+          const wGrad = ctx.createRadialGradient(wx, wy, 0, wx, wy, wispR * 2.2);
+          wGrad.addColorStop(0, `rgba(140,0,200,${0.7 + 0.2 * Math.sin(tick * 0.07 + w)})`);
+          wGrad.addColorStop(0.5, `rgba(60,0,100,0.4)`);
+          wGrad.addColorStop(1, 'rgba(0,0,0,0)');
+          ctx.beginPath();
+          ctx.arc(wx, wy, wispR * 2.2, 0, Math.PI * 2);
+          ctx.fillStyle = wGrad;
+          ctx.fill();
+        }
+
+        // Dark crackling eye-like core overlay (slightly darkens the blob center)
+        const coreGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 0.7);
+        coreGrad.addColorStop(0, `rgba(20,0,40,${0.3 + pulse * 0.15})`);
+        coreGrad.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.beginPath();
+        ctx.arc(sx, sy, sr * 0.7, 0, Math.PI * 2);
+        ctx.fillStyle = coreGrad;
+        ctx.fill();
+      }
+    }
+
     function drawBlob(b, cam) {
       if (b.dead) return;
       const sx = (b.x - cam.x) * cam.zoom;
@@ -978,6 +1135,42 @@
       ctx.font = `${subSize}px sans-serif`;
       ctx.fillStyle = 'rgba(255,255,255,0.75)';
       ctx.fillText(Math.round(b.r - 22), sx, sy + sr * 0.38);
+
+      // Direction arrow — shown on player blob when shoot or dash is unlocked
+      if (b.id === 'me' && (b.upgrades.shoot || b.upgrades.dash)) {
+        const hasDash = !!b.upgrades.dash;
+        const hasShoot = !!b.upgrades.shoot;
+        const arrowAngle = lastMoveAngle;
+        const arrowDist = sr + 10;
+        const arrowLen = 14;
+        const arrowHead = 6;
+        const ax = sx + Math.cos(arrowAngle) * arrowDist;
+        const ay = sy + Math.sin(arrowAngle) * arrowDist;
+        const tipX = ax + Math.cos(arrowAngle) * arrowLen;
+        const tipY = ay + Math.sin(arrowAngle) * arrowLen;
+        // Color: cyan=dash, orange=shoot, white=both
+        const arrowColor = hasDash && hasShoot ? 'rgba(255,255,255,0.9)'
+                         : hasDash ? 'rgba(100,210,255,0.9)'
+                         : 'rgba(255,160,60,0.9)';
+        ctx.save();
+        ctx.strokeStyle = arrowColor;
+        ctx.fillStyle = arrowColor;
+        ctx.lineWidth = 2.5;
+        ctx.lineCap = 'round';
+        // Shaft
+        ctx.beginPath();
+        ctx.moveTo(ax, ay);
+        ctx.lineTo(tipX - Math.cos(arrowAngle) * arrowHead, tipY - Math.sin(arrowAngle) * arrowHead);
+        ctx.stroke();
+        // Arrowhead
+        ctx.beginPath();
+        ctx.moveTo(tipX, tipY);
+        ctx.lineTo(tipX + Math.cos(arrowAngle + 2.4) * arrowHead, tipY + Math.sin(arrowAngle + 2.4) * arrowHead);
+        ctx.lineTo(tipX + Math.cos(arrowAngle - 2.4) * arrowHead, tipY + Math.sin(arrowAngle - 2.4) * arrowHead);
+        ctx.closePath();
+        ctx.fill();
+        ctx.restore();
+      }
     }
 
     function drawMagnetRing(blob, cam, tick, isEnemy) {
@@ -988,20 +1181,47 @@
       const superMagnetRing = !!(blob.upgrades && blob.upgrades.supermagnet);
       const magnetR = (blob.r + magnetStacks * 80) * (superMagnetRing ? 2 : 1);
       const sr = magnetR * cam.zoom;
-      const ringColor = isEnemy ? 'rgba(255,100,100,0.4)' : 'rgba(100,180,255,0.35)';
-      const glowColor = isEnemy ? 'rgba(255,100,100,0.07)' : 'rgba(100,180,255,0.06)';
-      // Animated dashed rotating ring
+      const isSuperMag = superMagnetRing;
+      // Colors: super=purple, enemy=red, player=blue
+      const ringColor = isSuperMag ? (isEnemy ? 'rgba(200,80,255,0.55)' : 'rgba(180,80,255,0.55)')
+                       : isEnemy   ? 'rgba(255,100,100,0.4)'
+                                   : 'rgba(100,180,255,0.35)';
+      const glowColor = isSuperMag ? (isEnemy ? 'rgba(200,80,255,0.1)' : 'rgba(180,80,255,0.09)')
+                       : isEnemy   ? 'rgba(255,100,100,0.07)'
+                                   : 'rgba(100,180,255,0.06)';
+      const spinSpeed = isSuperMag ? 0.05 : 0.02;
+      const dashOn    = isSuperMag ? 6 : 8;
+      const dashOff   = isSuperMag ? 8 : 12;
+
+      // Outer dashed rotating ring
       ctx.save();
       ctx.translate(sx, sy);
-      ctx.rotate(tick * 0.02);
+      ctx.rotate(tick * spinSpeed);
       ctx.beginPath();
       ctx.arc(0, 0, sr, 0, Math.PI * 2);
-      ctx.setLineDash([8, 12]);
+      ctx.setLineDash([dashOn, dashOff]);
       ctx.strokeStyle = ringColor;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = isSuperMag ? 2 : 1.5;
       ctx.stroke();
       ctx.setLineDash([]);
       ctx.restore();
+
+      // Super magnet: second inner counter-rotating ring
+      if (isSuperMag) {
+        const innerR = sr * 0.6;
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(-tick * spinSpeed * 0.7);
+        ctx.beginPath();
+        ctx.arc(0, 0, innerR, 0, Math.PI * 2);
+        ctx.setLineDash([4, 10]);
+        ctx.strokeStyle = ringColor;
+        ctx.lineWidth = 1.5;
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+
       // Subtle inner glow fill
       const grad = ctx.createRadialGradient(sx, sy, blob.r * cam.zoom, sx, sy, sr);
       grad.addColorStop(0, 'rgba(0,0,0,0)');
@@ -1110,6 +1330,21 @@
       if (gs.p2) checkEat(gs.p2, gs);
       updateProjectiles(gs);
       applyRegen(gs);
+      updateDecoys(gs);
+
+      // Update position trails for visual effects
+      for (const b of [gs.me, ...gs.bots, ...(gs.p2 ? [gs.p2] : [])]) {
+        if (!b.trail) b.trail = [];
+        if (!b._predTick) b._predTick = 0;
+        if (b.upgrades && b.upgrades.predator) b._predTick++;
+        const hasSpeedTrail = (b.upgrades && b.upgrades.superspeed);
+        if (hasSpeedTrail) {
+          b.trail.push({ x: b.x, y: b.y, r: b.r });
+          if (b.trail.length > 12) b.trail.shift();
+        } else {
+          b.trail = [];
+        }
+      }
 
       // Expand world as player grows
       expandWorld(gs);
@@ -1118,6 +1353,9 @@
 
       // Shoot on space
       if (keys[' '] && gs.me.upgrades.shoot) { tryShoot(gs); }
+      // Dash on Q
+      if ((keys['q'] || keys['Q']) && gs.me.upgrades.dash) { tryDash(gs); keys['q'] = false; keys['Q'] = false; }
+      if (dashCooldown > 0) dashCooldown--;
 
       const cam = getCam(gs.me);
 
@@ -1144,8 +1382,35 @@
         b._canEatMe = b.r > me.r * myThreshold;
         b._iCanEat  = me.r > b.r * theirThreshold;
       }
-      for (const b of gs.bots) { drawMagnetRing(b, cam, gs.tick, true); drawBlob(b, cam); }
-      if (gs.p2) { drawMagnetRing(gs.p2, cam, gs.tick, true); drawBlob(gs.p2, cam); }
+      // Draw decoys (permanent edible blobs)
+      if (gs.decoys) {
+        for (const d of gs.decoys) {
+          const sx = (d.x - cam.x) * cam.zoom, sy = (d.y - cam.y) * cam.zoom;
+          const sr = d.r * cam.zoom;
+          if (sx < -sr*2 || sx > CVDW+sr*2 || sy < -sr*2 || sy > CVDH+sr*2) continue;
+          const canEat = gs.me.r > d.r * 0.5;
+          const pulse = 0.5 + 0.5 * Math.sin(gs.tick * 0.1);
+          // Pulsing ring: green = can eat, red = too small
+          const ringRGB = canEat ? '80,255,120' : '255,80,80';
+          ctx.beginPath(); ctx.arc(sx, sy, sr + 3 + pulse * 5, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(${ringRGB},${0.4 + pulse * 0.35})`; ctx.lineWidth = 2.5; ctx.stroke();
+          // Blob body
+          ctx.save();
+          ctx.globalAlpha = 0.65;
+          ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
+          ctx.fillStyle = d.color; ctx.fill();
+          ctx.strokeStyle = `rgba(${ringRGB},0.5)`; ctx.lineWidth = 2; ctx.stroke();
+          ctx.restore();
+          // Label
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          ctx.font = `bold ${Math.max(8, Math.min(sr * 0.35, 12))}px sans-serif`;
+          ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+          ctx.fillText('decoy', sx, sy);
+        }
+      }
+      for (const b of gs.bots) { drawTrail(b, cam); drawMagnetRing(b, cam, gs.tick, true); drawBlob(b, cam); }
+      if (gs.p2) { drawTrail(gs.p2, cam); drawMagnetRing(gs.p2, cam, gs.tick, true); drawBlob(gs.p2, cam); }
+      drawTrail(gs.me, cam);
       drawMagnetRing(gs.me, cam, gs.tick, false);
       drawBlob(gs.me, cam);
       drawProjectiles(gs, cam);
@@ -1176,6 +1441,8 @@
       // Update shoot touch button visibility
       const shootBtn = document.getElementById('shoot-btn-touch');
       if (shootBtn) shootBtn.style.display = gs.me.upgrades.shoot ? 'flex' : 'none';
+      const dashBtn = document.getElementById('dash-btn-touch');
+      if (dashBtn) dashBtn.style.display = gs.me.upgrades.dash ? 'flex' : 'none';
 
       if (conn && conn.open) {
         const now = Date.now();
@@ -1307,6 +1574,12 @@
       if (gameState) tryShoot(gameState);
     }, { passive: false });
 
+    // Dash button touch
+    document.getElementById('dash-btn-touch').addEventListener('touchstart', e => {
+      e.preventDefault();
+      if (gameState) tryDash(gameState);
+    }, { passive: false });
+
     // Upgrade button touch
     document.getElementById('upgrade-btn-touch').addEventListener('touchstart', e => {
       e.preventDefault();
@@ -1374,9 +1647,15 @@
     document.getElementById('btn-restart').onclick = () => { gameState = initGame(0); cancelAnimationFrame(animId); gameLoop(); };
 
     // ── KEYBOARD ──
+    let _cheatBuf = '';
     window.addEventListener('keydown', e => {
       keys[e.key] = true;
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', ' '].includes(e.key)) e.preventDefault();
+      // Secret cheat: type "bigme" during game for +1000 size
+      if (gameState && e.key.length === 1) {
+        _cheatBuf = (_cheatBuf + e.key).slice(-5);
+        if (_cheatBuf === 'bigme') { gameState.me.r += 1000; _cheatBuf = ''; }
+      }
       if ((e.key === 'u' || e.key === 'U') && gameState) {
         const panel = document.getElementById('upgrade-panel');
         if (panel.style.display === 'none' || panel.style.display === '') {
