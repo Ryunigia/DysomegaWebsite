@@ -645,14 +645,14 @@
     const UPGRADE_DEFS = [
       { id: 'speed',   label: 'Speed Boost',     desc: '+20% speed per stack. Cost rises each time.', cost: 50, icon: '⚡', stackable: true, requires: null },
       { id: 'zoom',    label: 'Zoom Out',         desc: '+10% zoom-out multiplier per stack.',         cost: 60, icon: '🔭', stackable: true, requires: null },
-      { id: 'shield',  label: 'Shield',           desc: 'Need to be 25% bigger to eat you (once)',     cost: 60, icon: '🛡️', maxLevel: 1, requires: null },
+      { id: 'shield',  label: 'Shield',           desc: '+50 flat size as shield HP per stack. Absorbs damage before your real size.', cost: 60, icon: '🛡️', stackable: true, requires: null },
       { id: 'magnet',  label: 'Pellet Magnet',    desc: '+80px flat pull range per stack. Cost rises.', cost: 70, icon: '🧲', stackable: true, requires: null },
       { id: 'shoot',   label: 'Shooter',          desc: 'Fire blobs (Space / shoot btn)',               cost: 100, icon: '💥', maxLevel: 1, requires: null },
       { id: 'regen',   label: 'Regeneration',     desc: 'Slowly regrow size over time',                cost: 90, icon: '💚', maxLevel: 1, requires: null },
-      { id: 'predator',   label: 'Super Predator',   desc: 'Eat anyone even 1 size smaller than you.',           cost: 1000, icon: '💀', maxLevel: 1, super: true, requires: null },
+      { id: 'predator',   label: 'Super Predator',   desc: 'Eat anyone even 1 size smaller than you.',           cost: 500, icon: '💀', maxLevel: 1, super: true, requires: null },
       { id: 'supermagnet', label: 'Super Magnetism',  desc: 'Double magnet range + magnets also pull bots.',       cost: 1000, icon: '🌀', maxLevel: 1, super: true, requires: 'magnet' },
       { id: 'superspeed',  label: 'Super Speed',       desc: 'Double speed boost stacks + double base speed.',     cost: 1000, icon: '🚀', maxLevel: 1, super: true, requires: 'speed' },
-      { id: 'dash',        label: 'Dash',              desc: 'Split in half — leave a decoy, dash forward. More size = further dash. [Q / Dash btn]', cost: 1000, icon: '💨', maxLevel: 1, super: true, requires: null },
+      { id: 'dash',        label: 'Dash',              desc: 'Split in half — leave a decoy, dash forward. More size = further dash. [Q / Dash btn]', cost: 500, icon: '💨', maxLevel: 1, super: true, requires: null },
       { id: 'discount',label: 'Discount',         desc: '-10% all upgrade costs per stack (max 5 = 50% off).', cost: 200, icon: '🏷️', stackable: true, maxStacks: 5, requires: null },
     ];
 
@@ -685,7 +685,7 @@
 
     function makeBlob(id, x, y, color, name, isBot) {
       return { id, x, y, r: 22, color, name, baseName: name, isBot, vx: 0, vy: 0, score: 0, dead: false,
-               upgrades: {}, projectiles: [], shieldActive: false, trail: [] };
+               upgrades: {}, projectiles: [], trail: [], deathCount: 0 };
     }
 
     function makePellet() {
@@ -699,14 +699,29 @@
         p2: null,
         bots: Array.from({ length: BOT_COUNT }, (_, i) =>
           makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100), COLORS[(myIndex + i + 2) % COLORS.length], BOT_NAMES[i % BOT_NAMES.length], true)),
-        pellets: Array.from({ length: PELLET_COUNT }, makePellet),
+        pellets: Array.from({ length: PELLET_COUNT }, makePelletScaled),
         tick: 0,
         allProjectiles: [],
         decoys: []
       };
     }
 
-    function spawnPellet(gs) { if (gs.pellets.length < PELLET_COUNT) gs.pellets.push(makePellet()); }
+    function targetPelletCount() {
+      const worldScale = (W * H) / (BASE_W * BASE_H);
+      return Math.round(PELLET_COUNT * (1 + (worldScale - 1) * 0.2));
+    }
+    function makePelletScaled() {
+      // Bigger world = bigger bonus pellets occasionally to help bots catch up
+      const worldScale = (W * H) / (BASE_W * BASE_H);
+      const isBig = worldScale > 1.5 && Math.random() < 0.25; // 25% chance of big pellet when world expanded
+      const r = isBig ? rnd(12, 22) : 7;
+      const sizeValue = isBig ? r / 7 : 1; // big pellets give proportionally more size
+      return { x: rnd(30, W - 30), y: rnd(30, H - 30), r, sizeValue, color: COLORS[Math.floor(rnd(0, COLORS.length))] };
+    }
+    function spawnPellet(gs) {
+      const target = targetPelletCount();
+      if (gs.pellets.length < target) gs.pellets.push(makePelletScaled());
+    }
 
     // ── CAMERA ZOOM based on player size ──
     function getZoom(blob) {
@@ -900,8 +915,8 @@
       gs.pellets = gs.pellets.filter(p => {
         const d = dist(eater, p);
         if (d < eater.r + p.r * 0.6) {
-          eater.r += 0.8;
-          eater.score++;
+          eater.r += 0.8 * (p.sizeValue || 1);
+          eater.score += Math.round(p.sizeValue || 1);
           return false;
         }
         if (magnetRange > 0 && d < magnetRange) {
@@ -935,11 +950,22 @@
 
       for (const t of targets) {
         if (t.dead) continue;
-        const isPredator = eater.upgrades && eater.upgrades.predator;
-        const threshold = t.shieldActive ? 1.25 : (isPredator ? 1.001 : 1.15);
-        if (dist(eater, t) < eater.r * 0.85 && eater.r > t.r * threshold) {
-          if (t.shieldActive) {
-            t.shieldActive = false; // shield absorbs one hit
+        const isPredator = !!(eater.upgrades && eater.upgrades.predator);
+        // Shield stacks give flat +50 size buffer on top of real size
+        const shieldStacks = (t.upgrades && t.upgrades.shield) || 0;
+        const shieldHP = shieldStacks * 50;
+        const effectiveSize = t.r + shieldHP; // apparent size for eat threshold
+        // Predator: eats on touch (any size diff), ignores shield
+        // Normal: need to be 15% bigger than effective (shielded) size
+        const threshold = isPredator ? 1.001 : 1.15;
+        const compareSize = isPredator ? t.r : effectiveSize;
+        const eatDist = isPredator ? (eater.r + t.r) * 0.95 : eater.r * 0.85;
+        if (dist(eater, t) < eatDist && eater.r > compareSize * threshold) {
+          // Damage shield first (unless predator who ignores it)
+          if (shieldHP > 0 && !isPredator) {
+            // Eat into shield: reduce shield stacks proportionally
+            const dmg = Math.ceil(eater.r / 50);
+            t.upgrades.shield = Math.max(0, shieldStacks - dmg);
             continue;
           }
           eater.r += t.r * 0.4;
@@ -966,7 +992,7 @@
                 bot.upgrades[picked.id] = (bot.upgrades[picked.id] || 0) + 1;
               } else {
                 bot.upgrades[picked.id] = true;
-                if (picked.id === 'shield') bot.shieldActive = true;
+
               }
               return picked;
             }
@@ -980,9 +1006,10 @@
 
             // Update name to reflect last upgrade gained
             if (picked) {
-              const baseName = t.baseName || t.name;
+              t.deathCount = (t.deathCount || 0) + 1;
+              const baseName = t.baseName || t.name.replace(/\s*\[\d+\]$/, '').replace(/^\S+ /, '');
               t.baseName = baseName;
-              t.name = (UPGRADE_PREFIXES[picked.id] || picked.label) + ' ' + baseName;
+              t.name = (UPGRADE_PREFIXES[picked.id] || picked.label) + ' ' + baseName + ' [' + t.deathCount + ']';
             }
           } else {
             t.upgrades = {};
@@ -1092,26 +1119,6 @@
         ctx.fillStyle = auraGrad;
         ctx.fill();
 
-        // Orbiting shadow wisps — 4 tendrils rotating at different speeds
-        const wispCount = 4;
-        for (let w = 0; w < wispCount; w++) {
-          const baseAngle = (w / wispCount) * Math.PI * 2;
-          const angle = baseAngle + tick * 0.04 + w * 0.3;
-          const orbitR = sr * (1.1 + 0.15 * Math.sin(tick * 0.08 + w));
-          const wx = sx + Math.cos(angle) * orbitR;
-          const wy = sy + Math.sin(angle) * orbitR;
-          const wispR = sr * (0.18 + 0.06 * Math.sin(tick * 0.1 + w * 1.3));
-          // Wisp glow
-          const wGrad = ctx.createRadialGradient(wx, wy, 0, wx, wy, wispR * 2.2);
-          wGrad.addColorStop(0, `rgba(140,0,200,${0.7 + 0.2 * Math.sin(tick * 0.07 + w)})`);
-          wGrad.addColorStop(0.5, `rgba(60,0,100,0.4)`);
-          wGrad.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.beginPath();
-          ctx.arc(wx, wy, wispR * 2.2, 0, Math.PI * 2);
-          ctx.fillStyle = wGrad;
-          ctx.fill();
-        }
-
         // Dark crackling eye-like core overlay (slightly darkens the blob center)
         const coreGrad = ctx.createRadialGradient(sx, sy, 0, sx, sy, sr * 0.7);
         coreGrad.addColorStop(0, `rgba(20,0,40,${0.3 + pulse * 0.15})`);
@@ -1130,10 +1137,26 @@
       const sr = b.r * cam.zoom;
       if (sx < -sr * 2 || sx > CVDW + sr * 2 || sy < -sr * 2 || sy > CVDH + sr * 2) return;
 
-      // Shield glow
-      if (b.shieldActive) {
-        ctx.beginPath(); ctx.arc(sx, sy, sr + 5, 0, Math.PI * 2);
-        ctx.strokeStyle = 'rgba(100,200,255,0.7)'; ctx.lineWidth = 3; ctx.stroke();
+      // Shield visual: layered rings, thickness grows with stacks
+      const shieldStacks = (b.upgrades && b.upgrades.shield) || 0;
+      if (shieldStacks > 0) {
+        const shieldR = (shieldStacks * 50); // flat size buffer in game units
+        const shieldSR = (b.r + shieldR) * cam.zoom; // screen radius of full shield
+        const layers = Math.min(shieldStacks, 5); // draw up to 5 rings
+        for (let i = 0; i < layers; i++) {
+          const layerR = sr + (shieldSR - sr) * ((i + 1) / layers);
+          const alpha = 0.2 + (i / layers) * 0.5;
+          ctx.beginPath(); ctx.arc(sx, sy, layerR, 0, Math.PI * 2);
+          ctx.strokeStyle = `rgba(100,200,255,${alpha})`;
+          ctx.lineWidth = 1.5 + (layers - i) * 0.5;
+          ctx.stroke();
+        }
+        // Filled glow between blob edge and outer shield
+        const shieldGrad = ctx.createRadialGradient(sx, sy, sr, sx, sy, shieldSR);
+        shieldGrad.addColorStop(0, 'rgba(100,200,255,0.12)');
+        shieldGrad.addColorStop(1, 'rgba(100,200,255,0.0)');
+        ctx.beginPath(); ctx.arc(sx, sy, shieldSR, 0, Math.PI * 2);
+        ctx.fillStyle = shieldGrad; ctx.fill();
       }
 
       ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
@@ -1352,9 +1375,10 @@
         if (newW > W || newH > H) {
           W = newW; H = newH;
           // Spawn extra pellets to fill new space
-          for (let i = 0; i < 30; i++) gs.pellets.push(makePellet());
+          const toSpawn = Math.round(30 * Math.sqrt((W * H) / (BASE_W * BASE_H)));
+          for (let i = 0; i < toSpawn; i++) gs.pellets.push(makePelletScaled());
           // Spawn a new bot to keep it interesting
-          if (gs.bots.length < BOT_COUNT + Math.floor(steps / 2)) {
+          if (gs.bots.length < Math.min(20, BOT_COUNT + Math.floor(steps / 2))) {
             const i = gs.bots.length;
             gs.bots.push(makeBlob('bot' + i, rnd(100, W - 100), rnd(100, H - 100),
               COLORS[i % COLORS.length], BOT_NAMES[i % BOT_NAMES.length], true));
@@ -1395,7 +1419,9 @@
       // Expand world as player grows
       expandWorld(gs);
 
-      if (gs.tick % 12 === 0) spawnPellet(gs);
+      // Spawn pellets faster as world grows to keep density up
+      const spawnRate = Math.max(3, Math.round(12 / Math.sqrt((W * H) / (BASE_W * BASE_H))));
+      if (gs.tick % spawnRate === 0) spawnPellet(gs);
 
       // Shoot on space
       if (keys[' '] && gs.me.upgrades.shoot) { tryShoot(gs); }
@@ -1419,14 +1445,20 @@
 
       // Compute edibility tints relative to player
       const me = gs.me;
-      const mePredator = me.upgrades && me.upgrades.predator;
+      const mePredator = !!(me.upgrades && me.upgrades.predator);
+      const myShieldHP = ((me.upgrades && me.upgrades.shield) || 0) * 50;
       for (const b of [...gs.bots, ...(gs.p2 ? [gs.p2] : [])]) {
         if (b.dead) { b._canEatMe = false; b._iCanEat = false; continue; }
-        const bPredator = b.upgrades && b.upgrades.predator;
+        const bPredator = !!(b.upgrades && b.upgrades.predator);
+        const bShieldHP = ((b.upgrades && b.upgrades.shield) || 0) * 50;
+        // Can they eat me? (account for my shield, their predator status)
+        const myEffective = mePredator ? me.r : me.r + myShieldHP;
         const myThreshold = bPredator ? 1.001 : 1.15;
+        b._canEatMe = b.r > myEffective * myThreshold;
+        // Can I eat them? (account for their shield, my predator status)
+        const bEffective = bPredator ? b.r : b.r + bShieldHP;
         const theirThreshold = mePredator ? 1.001 : 1.15;
-        b._canEatMe = b.r > me.r * myThreshold;
-        b._iCanEat  = me.r > b.r * theirThreshold;
+        b._iCanEat  = me.r > bEffective * theirThreshold;
       }
       // Draw decoys (permanent edible blobs)
       if (gs.decoys) {
@@ -1509,7 +1541,20 @@
       document.getElementById('upgrade-size-display').textContent = `Your size: ${size}`;
       const list = document.getElementById('upgrade-list');
       list.innerHTML = '';
-      for (const u of UPGRADE_DEFS) {
+      // Sort: fully-bought upgrades at bottom, rest by effective cost ascending
+      const isFullyBought = u => {
+        if (u.stackable) return u.maxStacks && (gs.me.upgrades[u.id] || 0) >= u.maxStacks;
+        return !!gs.me.upgrades[u.id];
+      };
+      const sortedDefs = [...UPGRADE_DEFS].sort((a, b) => {
+        const doneA = isFullyBought(a) ? 1 : 0;
+        const doneB = isFullyBought(b) ? 1 : 0;
+        if (doneA !== doneB) return doneA - doneB; // done ones sink
+        const costA = a.stackable ? Math.round(a.cost * Math.pow(1.5, gs.me.upgrades[a.id] || 0)) : a.cost;
+        const costB = b.stackable ? Math.round(b.cost * Math.pow(1.5, gs.me.upgrades[b.id] || 0)) : b.cost;
+        return costA - costB;
+      });
+      for (const u of sortedDefs) {
         const stacks = u.stackable ? (gs.me.upgrades[u.id] || 0) : 0;
         const owned = !u.stackable && !!gs.me.upgrades[u.id];
         const locked = u.requires && !gs.me.upgrades[u.requires];
@@ -1555,7 +1600,7 @@
             } else {
               gs.me.upgrades[u.id] = true;
             }
-            if (u.id === 'shield') gs.me.shieldActive = true;
+
             upgradeNotifText = u.label + ' purchased!';
             upgradeNotifTimer = 90;
             openUpgradeShop(); // refresh shop so cost updates
