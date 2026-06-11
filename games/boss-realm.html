@@ -1,0 +1,1294 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Boss Realm</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+<style>
+:root{
+  --bg:#08090d;--bg2:#0f1118;--bg3:#161a23;--bg4:#1c2130;
+  --amber:#d4a017;--amber2:#f0bc2e;--amber3:#7a5a00;--amber4:#3a2a00;
+  --red:#c0392b;--red2:#e74c3c;--red3:#ff6b5b;
+  --green:#27ae60;--green2:#2ecc71;
+  --blue:#2980b9;--blue2:#3498db;
+  --purple:#8e44ad;--purple2:#9b59b6;
+  --teal:#16a085;--teal2:#1abc9c;
+  --text:#ccc7bb;--text2:#7a7268;--text3:#4a4840;
+  --border:#242834;--border2:#2e3545;
+  font-family:'Segoe UI',system-ui,sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* LOBBY */
+#lobby{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:20px;overflow-y:auto}
+.lobby-title{font-size:2.5rem;font-weight:800;letter-spacing:.05em;color:var(--amber2);text-shadow:0 0 60px #d4a01740}
+.lobby-sub{color:var(--text2);font-size:.88rem;max-width:440px;text-align:center;line-height:1.6}
+.lobby-box{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:22px 26px;display:flex;flex-direction:column;gap:11px;width:100%;max-width:400px}
+.lobby-box h2{color:var(--amber);font-size:.78rem;font-weight:700;letter-spacing:.1em;text-transform:uppercase}
+.lbl{font-size:.72rem;color:var(--text3);margin-bottom:-5px}
+input[type=text]{background:var(--bg);border:1px solid var(--border2);border-radius:7px;color:var(--text);padding:9px 13px;font-size:.93rem;outline:none;width:100%;transition:border .2s}
+input[type=text]:focus{border-color:var(--amber)}
+input[type=text]::placeholder{color:var(--text3)}
+.btn{cursor:pointer;border:none;border-radius:8px;padding:10px 18px;font-size:.9rem;font-weight:700;transition:all .15s}
+.btn-amber{background:var(--amber);color:#120e00}
+.btn-amber:hover{background:var(--amber2);transform:translateY(-1px)}
+.btn-green{background:var(--green);color:#001a08}
+.btn-green:hover{background:var(--green2);transform:translateY(-1px)}
+.btn-ghost{background:transparent;border:1px solid var(--border2);color:var(--text2)}
+.btn-ghost:hover{border-color:var(--amber3);color:var(--amber)}
+#lobby-status{color:var(--text2);font-size:.82rem;min-height:16px;text-align:center}
+#room-display{display:none;background:var(--bg);border:1px dashed var(--amber3);border-radius:8px;padding:9px 14px;font-family:monospace;font-size:1.05rem;color:var(--amber2);text-align:center;letter-spacing:.12em;cursor:pointer}
+#room-display:hover::after{content:" (click to copy)";font-size:.65rem;color:var(--text3)}
+.avatar-grid{display:flex;gap:6px;flex-wrap:wrap}
+.av-btn{background:transparent;border:1px solid var(--border2);border-radius:8px;padding:6px 9px;font-size:1.2rem;cursor:pointer;transition:all .15s}
+.av-btn.sel{border-color:var(--amber);background:var(--amber4)}
+.btn-row{display:flex;gap:8px}
+.solo-note{font-size:.7rem;color:var(--text3);text-align:center;line-height:1.4}
+
+/* GAME */
+#game{display:none;flex-direction:column;height:100vh}
+
+/* TOP BAR: arena + minimap side by side */
+#top-bar{display:flex;align-items:stretch;background:var(--bg2);border-bottom:2px solid var(--border2);flex-shrink:0}
+#arena{flex:1;padding:9px 13px;position:relative;transition:border-color .4s}
+#arena.rage{border-bottom:2px solid var(--red)!important}
+.arena-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+#level-badge{background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 9px;font-size:.72rem;color:var(--amber);font-weight:700}
+#room-code-display{font-size:.68rem;color:var(--text3);font-family:monospace}
+#grace-banner{font-size:.7rem;color:var(--green2);font-weight:700;letter-spacing:.05em;animation:blink .8s ease-in-out infinite alternate;display:none}
+@keyframes blink{from{opacity:1}to{opacity:.4}}
+.arena-top{display:flex;align-items:flex-start;gap:9px}
+#boss-sprite{font-size:2.8rem;line-height:1;flex-shrink:0;filter:drop-shadow(0 0 12px #c0392b55);transition:filter .4s}
+#boss-sprite.rage{filter:drop-shadow(0 0 22px #ff000099)!important;animation:shake .14s ease-in-out infinite}
+@keyframes shake{0%,100%{transform:translateX(0)}50%{transform:translateX(3px)}}
+.boss-info{flex:1;min-width:0}
+.boss-name-row{display:flex;align-items:center;gap:6px;margin-bottom:2px}
+.boss-name{font-size:1.05rem;font-weight:700;color:var(--red2);letter-spacing:.03em}
+.rage-tag{background:var(--red);color:#fff;font-size:.58rem;font-weight:800;padding:2px 5px;border-radius:3px;letter-spacing:.06em;text-transform:uppercase;animation:blink .5s ease-in-out infinite alternate;display:none}
+.boss-sub{font-size:.7rem;color:var(--text2);margin-bottom:4px;font-style:italic}
+.hp-bar-wrap{background:var(--bg);border-radius:4px;height:12px;overflow:hidden;border:1px solid var(--border)}
+#boss-hp-bar{height:100%;border-radius:3px;transition:width .5s,background .5s;background:linear-gradient(90deg,#8b1a1a,#e74c3c)}
+.hp-label{font-size:.67rem;color:var(--text2);margin-top:2px;display:flex;justify-content:space-between}
+#boss-phase-note{font-size:.66rem;color:var(--red3);margin-top:2px;min-height:12px;font-style:italic}
+#phase-bar{display:flex;gap:3px;margin-top:4px;flex-wrap:wrap}
+.phase-dot{width:8px;height:8px;border-radius:50%;background:var(--bg3);border:1px solid var(--border);transition:all .4s}
+.phase-dot.done{background:var(--green)}
+.phase-dot.current{background:var(--amber);box-shadow:0 0 7px #d4a01799}
+#boss-timer-wrap{position:absolute;top:9px;right:12px;display:flex;flex-direction:column;align-items:center;gap:1px}
+#boss-timer{font-size:1.8rem;font-weight:800;color:var(--amber2);line-height:1;min-width:42px;text-align:center;transition:color .3s}
+#boss-timer.danger{color:var(--red3);animation:pulse .4s ease-in-out infinite alternate}
+#boss-timer.grace{color:var(--green2)}
+@keyframes pulse{from{opacity:1}to{opacity:.4}}
+#boss-timer-label{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
+
+/* MINIMAP */
+#minimap-wrap{flex:0 0 200px;border-left:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:4px;background:var(--bg3)}
+#minimap-title{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:2px}
+#minimap-canvas{width:100%;flex:1;border-radius:6px;border:1px solid var(--border);background:var(--bg);image-rendering:pixelated}
+
+/* MAIN AREA */
+#main-area{display:flex;flex:1 1 0;overflow:hidden;min-height:0}
+
+/* Players panel */
+#players-panel{flex:0 0 185px;background:var(--bg3);border-right:1px solid var(--border);overflow-y:auto;padding:7px}
+#players-panel h3{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)}
+.player-card{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:6px 8px;margin-bottom:5px;transition:border .2s,opacity .2s}
+.player-card.me{border-color:var(--amber3)}
+.player-card.dead{opacity:.35;filter:grayscale(.9)}
+.pc-top{display:flex;align-items:center;gap:5px;margin-bottom:3px}
+.pc-avatar{font-size:1.25rem;line-height:1}
+.pc-right{min-width:0;flex:1}
+.pc-name{font-size:.8rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pc-class{font-size:.62rem;color:var(--text3)}
+.pc-mode{font-size:.6rem;color:var(--teal2);font-style:italic}
+.mini-hp{background:var(--bg2);border-radius:3px;height:5px;overflow:hidden;border:1px solid var(--border);margin-bottom:3px}
+.mini-hp-fill{height:100%;background:var(--green2);border-radius:2px;transition:width .4s,background .4s}
+.mini-hp-fill.low{background:#e74c3c}
+.mini-hp-fill.crit{background:#ff2200;animation:hpflash .35s ease-in-out infinite alternate}
+@keyframes hpflash{from{opacity:1}to{opacity:.4}}
+.pc-bar-row{display:flex;align-items:center;gap:3px;margin-bottom:3px}
+.pc-bar-lbl{font-size:.57rem;color:var(--purple2);font-weight:700;width:14px;flex-shrink:0}
+.pc-xpbar-outer{flex:1;background:var(--bg2);border-radius:2px;height:5px;overflow:hidden;border:1px solid #2a1a3a}
+.pc-xpfill{height:100%;background:var(--purple2);border-radius:2px;transition:width .4s}
+.pc-bar-num{font-size:.54rem;color:var(--text3);font-family:monospace;min-width:30px;text-align:right;flex-shrink:0}
+.pc-stats{display:flex;gap:5px;flex-wrap:wrap}
+.pc-stat{font-size:.6rem;color:var(--text2)}
+.pc-stat b{color:var(--amber);font-weight:600}
+
+/* Log */
+#log-wrap{flex:1 1 0;display:flex;flex-direction:column;min-width:0;overflow:hidden}
+#log{flex:1 1 0;overflow-y:auto;padding:7px 11px;display:flex;flex-direction:column;gap:2px;scroll-behavior:smooth}
+.log-line{font-size:.79rem;line-height:1.55;padding:1px 0 1px 5px;border-left:2px solid transparent}
+.log-line.sys{color:var(--text3)}
+.log-line.attack{color:#f08070;border-color:#c0392b55}
+.log-line.action{color:#7ab8e8;border-color:#2980b944}
+.log-line.loot{color:var(--amber2);border-color:#d4a01744}
+.log-line.heal{color:#6ddc8e;border-color:#27ae6044}
+.log-line.death{color:var(--red3);font-weight:700;border-color:var(--red)}
+.log-line.victory{color:var(--amber2);font-weight:700;border-color:var(--amber)}
+.log-line.info{color:#b09be8;border-color:#8e44ad44}
+.log-line.flee{color:var(--text2);font-style:italic}
+.log-line.ai{color:#a8d898;border-color:var(--green)}
+.log-line.rage{color:var(--red3);font-weight:700;border-color:var(--red);background:#200008}
+.log-line.mode{color:var(--teal2);border-color:var(--teal)}
+.log-line.sep{border:none;color:var(--border2);font-size:.68rem;padding:4px 0;text-align:center;letter-spacing:.1em}
+.log-time{color:var(--text3);font-size:.62rem;margin-right:4px;font-family:monospace}
+.log-ai-tag{font-size:.58rem;background:#1a3020;color:#6ddc8e;border-radius:3px;padding:1px 4px;margin-right:4px;font-weight:700}
+.typing-dot{display:inline-flex;gap:3px;margin-left:3px;vertical-align:middle}
+.typing-dot span{width:3px;height:3px;border-radius:50%;background:var(--green2);animation:td 1s ease-in-out infinite}
+.typing-dot span:nth-child(2){animation-delay:.2s}
+.typing-dot span:nth-child(3){animation-delay:.4s}
+@keyframes td{0%,100%{opacity:.3;transform:translateY(0)}50%{opacity:1;transform:translateY(-2px)}}
+
+/* CMD */
+#cmd-area{background:var(--bg3);border-top:1px solid var(--border);padding:7px 11px;flex-shrink:0}
+#cmd-hints{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:6px}
+.hchip{background:var(--bg4);border:1px solid var(--border2);border-radius:5px;padding:3px 7px;font-size:.66rem;color:var(--text3);cursor:pointer;transition:all .14s;white-space:nowrap;user-select:none}
+.hchip:hover{border-color:var(--amber3);color:var(--amber2)}
+.hchip.active-mode{border-color:var(--teal);color:var(--teal2);background:#0a1e1e}
+#cmd-row{display:flex;gap:6px}
+#cmd-input{flex:1;background:var(--bg);border:1px solid var(--border2);border-radius:7px;color:var(--text);padding:8px 12px;font-size:.86rem;outline:none;transition:border .2s}
+#cmd-input:focus{border-color:var(--amber)}
+#cmd-input::placeholder{color:var(--text3)}
+#cmd-send{background:var(--amber);color:#120e00;border:none;border-radius:7px;padding:8px 15px;font-weight:700;cursor:pointer;font-size:.86rem;transition:all .14s}
+#cmd-send:hover{background:var(--amber2)}
+
+/* Guild modal */
+#guild-modal{display:none;position:fixed;inset:0;background:#000000cc;z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#guild-modal.show{display:flex}
+.guild-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 32px;max-width:480px;width:90%}
+.guild-box h2{color:var(--amber2);font-size:1.2rem;font-weight:800;margin-bottom:6px}
+.guild-box p{color:var(--text2);font-size:.82rem;margin-bottom:16px;line-height:1.6}
+.class-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
+.class-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s;text-align:left}
+.class-btn:hover{border-color:var(--amber3)}
+.class-btn.current{border-color:var(--amber);background:var(--amber4)}
+.class-btn .cn{font-size:.82rem;font-weight:700}
+.class-btn .cd{font-size:.66rem;color:var(--text3);margin-top:2px;line-height:1.3}
+.class-btn .cc{font-size:.68rem;color:var(--amber);margin-top:3px}
+#guild-close{width:100%;background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:7px;padding:9px;cursor:pointer;font-size:.85rem;transition:all .14s}
+#guild-close:hover{border-color:var(--red);color:var(--red2)}
+
+/* Overlay */
+#overlay{display:none;position:fixed;inset:0;background:#000000bb;z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#overlay.show{display:flex}
+.overlay-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 36px;text-align:center;max-width:380px;width:90%;box-shadow:0 24px 80px #000}
+.overlay-box h2{font-size:1.4rem;margin-bottom:7px;font-weight:800}
+.overlay-box p{color:var(--text2);margin-bottom:14px;font-size:.85rem;line-height:1.6}
+.overlay-stats{background:var(--bg3);border-radius:7px;padding:10px 14px;margin-bottom:14px;font-size:.78rem;color:var(--text2);text-align:left;line-height:1.9}
+.overlay-stats b{color:var(--amber)}
+
+::-webkit-scrollbar{width:3px}
+::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
+
+@media(max-width:600px){
+  #minimap-wrap{flex:0 0 130px}
+  #players-panel{flex:0 0 140px}
+}
+</style>
+</head>
+<body>
+
+<!-- LOBBY -->
+<div id="lobby">
+  <div class="lobby-title">⚔ Boss Realm</div>
+  <p class="lobby-sub">A co-op chat-command RPG. Type commands to act. Survive the boss — together or alone.</p>
+
+  <div class="lobby-box">
+    <h2>Your Hero</h2>
+    <div class="lbl">Name</div>
+    <input type="text" id="name-input" placeholder="Hero name…" maxlength="16">
+    <div class="lbl">Avatar</div>
+    <div class="avatar-grid" id="avatar-row"></div>
+  </div>
+
+  <div class="lobby-box">
+    <h2>Play</h2>
+    <button class="btn btn-green" id="solo-btn">⚔ Play Solo</button>
+    <div style="display:flex;align-items:center;gap:8px;color:var(--text3);font-size:.75rem"><div style="flex:1;height:1px;background:var(--border)"></div>or multiplayer<div style="flex:1;height:1px;background:var(--border)"></div></div>
+    <input type="text" id="room-input" placeholder="Room code — leave empty to host" maxlength="12" style="text-transform:uppercase;letter-spacing:.05em">
+    <button class="btn btn-amber" id="join-btn">🌐 Join / Host Online</button>
+    <div id="room-display"></div>
+    <div id="lobby-status"></div>
+    <div class="solo-note">Solo runs entirely in your browser — no server needed.<br>For multiplayer, share the room code with friends.</div>
+  </div>
+</div>
+
+<!-- GAME -->
+<div id="game">
+  <!-- TOP BAR -->
+  <div id="top-bar">
+    <div id="arena">
+      <div class="arena-header">
+        <div id="level-badge">⚔ Level <span id="level-num">1</span></div>
+        <div id="room-code-display"></div>
+        <div id="grace-banner">🛡 GRACE PERIOD — boss is watching…</div>
+      </div>
+      <div class="arena-top">
+        <div id="boss-sprite">👹</div>
+        <div class="boss-info">
+          <div class="boss-name-row">
+            <div class="boss-name" id="boss-name">The Rotgut</div>
+            <div class="rage-tag" id="rage-tag">ENRAGED</div>
+          </div>
+          <div class="boss-sub" id="boss-desc">A bloated beast reeking of swamp-gas</div>
+          <div class="hp-bar-wrap"><div id="boss-hp-bar" style="width:100%"></div></div>
+          <div class="hp-label"><span id="boss-hp-val">800</span><span id="boss-hp-max">/ 800</span></div>
+          <div id="boss-phase-note"></div>
+          <div id="phase-bar"></div>
+        </div>
+      </div>
+      <div id="boss-timer-wrap">
+        <div id="boss-timer" class="grace">—</div>
+        <div id="boss-timer-label">grace</div>
+      </div>
+    </div>
+    <div id="minimap-wrap">
+      <div id="minimap-title">World Map</div>
+      <canvas id="minimap-canvas" width="184" height="130"></canvas>
+    </div>
+  </div>
+
+  <!-- MAIN -->
+  <div id="main-area">
+    <div id="players-panel">
+      <h3>Party (<span id="party-count">0</span>)</h3>
+      <div id="player-list"></div>
+    </div>
+    <div id="log-wrap">
+      <div id="log"></div>
+      <div id="cmd-area">
+        <div id="cmd-hints"></div>
+        <div id="cmd-row">
+          <input type="text" id="cmd-input" placeholder="What do you do? (attack, farm, mine, train, guild…)" autocomplete="off" spellcheck="false">
+          <button id="cmd-send">Act</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- GUILD MODAL -->
+<div id="guild-modal">
+  <div class="guild-box">
+    <h2>⚜ Adventurers Guild</h2>
+    <p id="guild-desc">Choose a class to change profession. Each has unique stats and a special ability. One change per visit — costs gold.</p>
+    <div class="class-grid" id="guild-class-grid"></div>
+    <button id="guild-close">✕ Leave Guild</button>
+  </div>
+</div>
+
+<!-- OVERLAY -->
+<div id="overlay">
+  <div class="overlay-box">
+    <h2 id="overlay-title">☠ Wiped</h2>
+    <p id="overlay-msg">The boss crushed your party.</p>
+    <div class="overlay-stats" id="overlay-stats"></div>
+    <button class="btn btn-amber" id="overlay-btn" style="width:100%">Try Again</button>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════
+//  DATA
+// ═══════════════════════════════════════════
+const AVATARS=['🧙','⚔️','🏹','🛡️','🗡️','🪄','🔮','🐺','🦊','🐉','🧝','🧟'];
+
+const CLASSES=[
+  {id:'villager', name:'Villager',   emoji:'🧑', cost:0,   hpB:0,   atkB:0,  defB:0,  desc:'The humble beginning. Can do everything, master of nothing.',special:'Plead',specialDesc:'Beg the boss to delay its next attack by 8s.'},
+  {id:'warrior',  name:'Warrior',    emoji:'⚔️', cost:120, hpB:60,  atkB:12, defB:8,  desc:'High HP & DEF. Reliable heavy hitter.',special:'Shield Bash',specialDesc:'Massive strike. 30s cooldown.'},
+  {id:'mage',     name:'Mage',       emoji:'🔮', cost:150, hpB:-20, atkB:28, defB:-2, desc:'Low HP but devastating spell damage.',special:'Arcane Burst',specialDesc:'2.5× ATK spell. 30s cooldown.'},
+  {id:'ranger',   name:'Ranger',     emoji:'🏹', cost:120, hpB:10,  atkB:16, defB:3,  desc:'Balanced. High flee chance. Pins boss.',special:'Pinning Shot',specialDesc:'Deals damage AND adds 12s to boss timer.'},
+  {id:'rogue',    name:'Rogue',      emoji:'🗡️', cost:120, hpB:-10, atkB:20, defB:1,  desc:'Bonus dungeon gold. Can Steal from boss.',special:'Backstab',specialDesc:'2.2× ATK + steals 30-70g from boss hoard.'},
+  {id:'cleric',   name:'Cleric',     emoji:'✨', cost:130, hpB:30,  atkB:5,  defB:5,  desc:'Can Pray to heal the whole party.',special:'Holy Light',specialDesc:'Heals all living heroes for 120 HP.'},
+  {id:'berserker',name:'Berserker',  emoji:'💢', cost:140, hpB:20,  atkB:22, defB:-5, desc:'Gets stronger as HP drops. Blood Frenzy.',special:'Blood Frenzy',specialDesc:'3× ATK at cost of 40 own HP.'},
+];
+
+const BOSSES=[
+  {name:'The Rotgut',    e:'👹',hp:800,  atk:40, gold:65,  xp:35, rage:300,rageAtk:70,  desc:'A bloated beast reeking of swamp-gas'},
+  {name:'Ironmaul',      e:'🤖',hp:1100, atk:55, gold:100, xp:55, rage:400,rageAtk:95,  desc:'A rusted golem pulsing with dark energy'},
+  {name:'Serpenthra',    e:'🐍',hp:1450, atk:68, gold:140, xp:75, rage:500,rageAtk:115, desc:'A venomous serpent the size of a warship'},
+  {name:'The Pale Duke', e:'👻',hp:1850, atk:82, gold:180, xp:95, rage:650,rageAtk:140, desc:'A spectral lord haunting the cursed halls'},
+  {name:'Cinderwraith',  e:'🔥',hp:2300, atk:98, gold:225, xp:120,rage:800,rageAtk:165, desc:'A wraith wreathed in unquenchable flame'},
+  {name:'Vorath',        e:'🦂',hp:2800, atk:118,gold:275, xp:150,rage:950,rageAtk:200, desc:'The scorpion titan, herald of the wastes'},
+  {name:'Mireking',      e:'🐸',hp:3300, atk:135,gold:330, xp:185,rage:1100,rageAtk:230,desc:'An ancient bog-god of decay and plague'},
+  {name:'Stormcaller',   e:'⛈️',hp:3900, atk:155,gold:400, xp:225,rage:1300,rageAtk:265,desc:'A thunder titan who bends the sky itself'},
+  {name:'Ashbringer',    e:'💀',hp:4700, atk:180,gold:490, xp:275,rage:1600,rageAtk:310,desc:'The lord of ash, leveler of kingdoms'},
+  {name:'Omegath',       e:'🌌',hp:6200, atk:225,gold:750, xp:400,rage:2000,rageAtk:380,desc:'The void-born final doom — an endless hunger'},
+];
+
+const ITEMS=[
+  {id:'sword',    name:'Iron Sword',  cost:80,  effect:'atk',val:15,emoji:'⚔️'},
+  {id:'steel',    name:'Steel Blade', cost:200, effect:'atk',val:35,emoji:'🗡️'},
+  {id:'mageblade',name:'Mageblade',   cost:380, effect:'atk',val:60,emoji:'🌟',rare:true},
+  {id:'shield',   name:'Buckler',     cost:65,  effect:'def',val:10,emoji:'🛡️'},
+  {id:'chainmail',name:'Chainmail',   cost:160, effect:'def',val:28,emoji:'🪖'},
+  {id:'platemail',name:'Plate',       cost:350, effect:'def',val:55,emoji:'⛨',rare:true},
+  {id:'potion',   name:'Potion',      cost:55,  effect:'heal',val:80,emoji:'🧪',consumable:true},
+  {id:'elixir',   name:'Elixir',      cost:220, effect:'heal',val:220,emoji:'💎',consumable:true,rare:true},
+  {id:'food',     name:'Rations',     cost:18,  effect:'heal',val:35,emoji:'🍞',consumable:true},
+  {id:'boots',    name:'Speed Boots', cost:130, effect:'flee',val:1, emoji:'👟'},
+  {id:'tome',     name:'Spell Tome',  cost:320, effect:'atk',val:55,emoji:'📖'},
+  {id:'revive',   name:'Phoenix Ash', cost:400, effect:'revive',val:1,emoji:'🪶',consumable:true,rare:true},
+];
+
+const ORES=['stone','stone','stone','iron','iron','gold','mithril'];
+const CRAFT_RECIPES=[
+  {needs:{iron:2},  gives:'Iron Sword',   stat:'atk',val:20},
+  {needs:{stone:3}, gives:'Stone Buckler',stat:'def',val:9},
+  {needs:{gold:2},  gives:'Gold Charm',   stat:'def',val:15},
+  {needs:{mithril:1,iron:1},gives:'Mithril Edge',stat:'atk',val:45},
+];
+
+// Zone layout for minimap
+const ZONES={
+  arena:  {x:75, y:5,  w:60,h:40, color:'#3a1010',label:'⚔ Arena',   labelY:20},
+  village:{x:5,  y:55, w:50,h:35, color:'#1a2a1a',label:'🏘 Village', labelY:75},
+  farm:   {x:65, y:55, w:45,h:35, color:'#1a2a10',label:'🌾 Farm',    labelY:75},
+  mine:   {x:120,y:55, w:50,h:35, color:'#1a1a2a',label:'⛏ Mine',    labelY:75},
+  inn:    {x:5,  y:98, w:45,h:28, color:'#2a1a10',label:'🏠 Inn',     labelY:115},
+  dungeon:{x:60, y:98, w:55,h:28, color:'#100a20',label:'🏚 Dungeon', labelY:115},
+  guild:  {x:125,y:98, w:50,h:28, color:'#20100a',label:'⚜ Guild',   labelY:115},
+};
+// Map mode name → zone key
+const MODE_ZONE={
+  idle:'village', attacking:'arena', fighting:'arena',
+  farming:'farm', mining:'mine', dungeoning:'dungeon',
+  resting:'inn', training:'village', shopping:'village',
+  fled:'village', guild:'guild', revived:'village',
+};
+
+// Auto-mode tick intervals (ms)
+const AUTO_MODES={
+  farming:  {tick:5000, fn:'tickFarm'},
+  mining:   {tick:6000, fn:'tickMine'},
+  training: {tick:7000, fn:'tickTrain'},
+  dungeoning:{tick:8000,fn:'tickDungeon'},
+  resting:  {tick:4000, fn:'tickInn'},
+};
+
+// ═══════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════
+let peer=null, connections=[], isHost=false, roomId='', myId='';
+let isSolo=false;
+let players={};
+let bossHP=0, bossMaxHP=0, bossLvl=0, timerSec=0, graceSec=0;
+let bossTimerInt=null, graceTimerInt=null, autoModeInt=null, minimapInt=null;
+let bossEnraged=false, graceActive=false, gameActive=false;
+let selectedAvatar=AVATARS[0];
+const MAX_PLAYERS=10;
+let guildOpenForPid=null;
+
+// ═══════════════════════════════════════════
+//  LOBBY BUILD
+// ═══════════════════════════════════════════
+(()=>{
+  const ar=document.getElementById('avatar-row');
+  AVATARS.forEach((a,i)=>{
+    const b=document.createElement('button');
+    b.className='av-btn'+(i===0?' sel':'');
+    b.textContent=a;
+    b.onclick=()=>{selectedAvatar=a;ar.querySelectorAll('.av-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
+    ar.appendChild(b);
+  });
+  // hint chips
+  const hc=document.getElementById('cmd-hints');
+  ['attack','special','train','farm','mine','dungeon','shop','inn','flee','scout','pray','craft','guild','inv','commands'].forEach(h=>{
+    const d=document.createElement('div');
+    d.className='hchip'; d.textContent=h; d.dataset.cmd=h;
+    d.onclick=()=>{const inp=document.getElementById('cmd-input');inp.value=h;inp.focus();};
+    hc.appendChild(d);
+  });
+  // guild class grid
+  buildGuildGrid();
+})();
+
+function buildGuildGrid(){
+  const grid=document.getElementById('guild-class-grid');
+  grid.innerHTML='';
+  CLASSES.forEach(c=>{
+    const d=document.createElement('div');
+    d.className='class-btn';
+    d.innerHTML=`<div class="cn">${c.emoji} ${c.name}</div><div class="cd">${c.desc}</div><div class="cd" style="color:var(--purple2);margin-top:2px">✦ ${c.specialDesc}</div><div class="cc">${c.cost===0?'Free':'Cost: '+c.cost+'g'}</div>`;
+    d.onclick=()=>doClassChange(c.id);
+    grid.appendChild(d);
+  });
+}
+
+document.getElementById('room-input').addEventListener('input',e=>{
+  e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
+});
+function setStatus(m,c='var(--text2)'){const e=document.getElementById('lobby-status');e.textContent=m;e.style.color=c;}
+
+// ═══════════════════════════════════════════
+//  SOLO ENTRY
+// ═══════════════════════════════════════════
+document.getElementById('solo-btn').addEventListener('click',()=>{
+  const name=(document.getElementById('name-input').value.trim()||'Hero').slice(0,16);
+  isSolo=true; isHost=true;
+  myId='solo-'+Math.random().toString(36).slice(2,8);
+  roomId='SOLO';
+  players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
+  startGame();
+});
+
+// ═══════════════════════════════════════════
+//  MULTIPLAYER ENTRY
+// ═══════════════════════════════════════════
+document.getElementById('join-btn').addEventListener('click',()=>{
+  const name=(document.getElementById('name-input').value.trim()||'Hero').slice(0,16);
+  const code=document.getElementById('room-input').value.trim().toUpperCase();
+  setStatus('Connecting…');
+  initPeer(name,code);
+});
+
+function initPeer(name,code){
+  const myPeerId='BR-'+(Math.random().toString(36).slice(2,9).toUpperCase());
+  if(peer){try{peer.destroy();}catch(e){}}
+  peer=new Peer(myPeerId,{debug:0});
+  const openTmr=setTimeout(()=>{if(!myId)setStatus('PeerJS server unreachable. Try Solo instead.','var(--red2)');},8000);
+  peer.on('open',id=>{
+    clearTimeout(openTmr); myId=id;
+    if(!code){
+      isHost=true; isSolo=false;
+      roomId=id.replace('BR-','');
+      const rd=document.getElementById('room-display');
+      rd.style.display='block'; rd.textContent=roomId;
+      rd.onclick=()=>{navigator.clipboard?.writeText(roomId);const t=rd.textContent;rd.textContent='Copied!';setTimeout(()=>rd.textContent=t,1200);};
+      setStatus('Room ready — share code above!','var(--amber)');
+      players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
+      startGame();
+    } else {
+      roomId=code; isSolo=false;
+      players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
+      setStatus('Connecting to '+code+'…');
+      const conn=peer.connect('BR-'+code,{reliable:true,serialization:'json'});
+      const connTmr=setTimeout(()=>setStatus('Room not found or host offline.','var(--red2)'),7000);
+      conn.on('open',()=>{clearTimeout(connTmr);addConn(conn);conn.send({type:'join',id:myId,name,avatar:selectedAvatar});setStatus('Joined!','var(--green2)');});
+      conn.on('error',()=>{clearTimeout(connTmr);setStatus('Could not connect. Check the room code.','var(--red2)');});
+    }
+  });
+  peer.on('connection',conn=>{if(!isHost||connections.length>=MAX_PLAYERS){conn.close();return;}addConn(conn);});
+  peer.on('error',e=>{
+    clearTimeout(openTmr);
+    if(e.type==='unavailable-id'){setTimeout(()=>initPeer(name,code),500);return;}
+    setStatus('Error: '+e.type,'var(--red2)');
+  });
+}
+
+function addConn(conn){
+  connections.push(conn);
+  conn.on('data',msg=>handleMsg(msg,conn));
+  conn.on('close',()=>{
+    connections=connections.filter(c=>c!==conn);
+    const pid=Object.keys(players).find(k=>players[k]._conn===conn);
+    if(pid){broadcastLog(`${players[pid].name} left.`,'sys');delete players[pid];renderPlayers();}
+  });
+}
+function broadcast(msg,except=null){connections.forEach(c=>{if(c!==except&&c.open)c.send(msg);});}
+function sendToHost(msg){if(isHost)handleMsg(msg,null);else if(connections[0]?.open)connections[0].send(msg);}
+
+// ═══════════════════════════════════════════
+//  MESSAGE HANDLER
+// ═══════════════════════════════════════════
+function handleMsg(msg,fromConn){
+  if(!msg?.type)return;
+  switch(msg.type){
+    case 'join':
+      if(!isHost)return;
+      if(Object.keys(players).length>=MAX_PLAYERS)return;
+      players[msg.id]=mkPlayer(msg.id,msg.name,msg.avatar,'villager');
+      players[msg.id]._conn=fromConn;
+      fromConn?.send({type:'state',players:serPlayers(),bossHP,bossMaxHP,bossLvl,timerSec,graceSec,graceActive,gameActive,bossEnraged});
+      broadcast({type:'player_join',id:msg.id,player:cleanP(players[msg.id])},fromConn);
+      broadcastLog(`${msg.name} the Villager entered the realm!`,'info');
+      renderPlayers(); break;
+    case 'state':
+      Object.entries(msg.players).forEach(([id,p])=>{if(id!==myId)players[id]=p;});
+      bossHP=msg.bossHP;bossMaxHP=msg.bossMaxHP;bossLvl=msg.bossLvl;
+      timerSec=msg.timerSec;graceSec=msg.graceSec;graceActive=msg.graceActive;
+      gameActive=true;bossEnraged=msg.bossEnraged;
+      document.getElementById('lobby').style.display='none';
+      document.getElementById('game').style.display='flex';
+      document.getElementById('room-code-display').textContent='Room: '+roomId;
+      updateBossUI();renderPlayers();
+      if(graceActive)updateTimer(graceSec,true); else updateTimer(timerSec,false);
+      addLog('Entered the realm! Level '+(bossLvl+1)+'.','info');
+      addLog('You start as a Villager. Visit the Guild to choose a class.','sys');
+      break;
+    case 'player_join': players[msg.id]=msg.player;addLog(`${msg.player.name} joined!`,'info');renderPlayers();break;
+    case 'player_update': if(msg.id!==myId)players[msg.id]=msg.player;renderPlayers();break;
+    case 'log': addLog(msg.text,msg.cls);break;
+    case 'boss_update': bossHP=msg.hp;bossEnraged=msg.enraged||false;updateBossHP();break;
+    case 'boss_attack':
+      bossHP=msg.bossHP;bossEnraged=msg.enraged||false;
+      msg.damages.forEach(({id,dmg})=>{if(players[id]){players[id].hp=Math.max(0,players[id].hp-dmg);if(players[id].hp===0)players[id].alive=false;}});
+      updateBossHP();renderPlayers();break;
+    case 'timer': timerSec=msg.sec;updateTimer(msg.sec,false);break;
+    case 'grace_tick': graceSec=msg.sec;updateTimer(msg.sec,true);break;
+    case 'next_level': bossLvl=msg.lvl;bossHP=msg.hp;bossMaxHP=msg.hp;bossEnraged=false;updateBossUI();break;
+    case 'reset': resetForRetry(msg.lvl);break;
+    case 'command': if(isHost)processCommand(msg.pid,msg.tokens,msg.raw);break;
+    case 'mode_change': if(players[msg.id]){players[msg.id].status=msg.mode;renderPlayers();}break;
+  }
+}
+function serPlayers(){const o={};Object.entries(players).forEach(([id,p])=>{o[id]=cleanP(p);});return o;}
+function cleanP(p){const{_conn,...r}=p;return r;}
+
+// ═══════════════════════════════════════════
+//  PLAYER FACTORY
+// ═══════════════════════════════════════════
+function mkPlayer(id,name,avatar,clsId){
+  const c=CLASSES.find(x=>x.id===clsId)||CLASSES[0];
+  return {
+    id,name,avatar,cls:c.id,clsName:c.name,clsEmoji:c.emoji,
+    hp:200+c.hpB, maxHp:200+c.hpB,
+    atk:20+c.atkB, def:5+c.defB,
+    gold:50, xp:0, level:1, xpNeeded:60,
+    inventory:[], status:'idle', alive:true,
+    kills:0, totalDmg:0
+  };
+}
+
+// ═══════════════════════════════════════════
+//  GAME START
+// ═══════════════════════════════════════════
+function startGame(){
+  document.getElementById('lobby').style.display='none';
+  document.getElementById('game').style.display='flex';
+  document.getElementById('room-code-display').textContent=isSolo?'Solo Mode':'Room: '+roomId;
+  gameActive=true;
+  if(isHost)loadBoss(0);
+  startAutoModeLoop();
+  startMinimapLoop();
+  addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━','sep');
+  addLog('You are a Villager. Visit the Guild to choose a class.','sys');
+  addLog('Commands: attack · train · farm · mine · dungeon · shop · inn · flee · craft · guild · pray · scout · inv','sys');
+  addLog('Modes (farm/mine/train/dungeon/inn) run automatically — no spamming needed!','info');
+  addLog('━━━━━━━━━━━━━━━━━━━━━━━━━━━','sep');
+}
+
+// ═══════════════════════════════════════════
+//  BOSS LOAD & UI
+// ═══════════════════════════════════════════
+function loadBoss(lvl){
+  bossLvl=lvl; bossEnraged=false;
+  const b=BOSSES[lvl]; bossMaxHP=b.hp; bossHP=b.hp;
+  updateBossUI();
+  broadcastLog(`━━ LEVEL ${lvl+1} ━━  ${b.e} ${b.name} awakens!`,'attack');
+  broadcastLog(b.desc,'sys');
+  if(isHost){
+    broadcast({type:'next_level',lvl,hp:bossMaxHP});
+    startGracePeriod();
+    if(!isSolo)generateBossIntro(b);
+  }
+}
+
+function startGracePeriod(){
+  if(graceTimerInt)clearInterval(graceTimerInt);
+  if(bossTimerInt)clearInterval(bossTimerInt);
+  graceSec=30; graceActive=true;
+  document.getElementById('grace-banner').style.display='';
+  document.getElementById('boss-timer-label').textContent='grace';
+  updateTimer(graceSec,true);
+  graceTimerInt=setInterval(()=>{
+    graceSec--;
+    broadcast({type:'grace_tick',sec:graceSec});
+    updateTimer(graceSec,true);
+    if(graceSec<=0){
+      clearInterval(graceTimerInt);
+      graceActive=false;
+      document.getElementById('grace-banner').style.display='none';
+      broadcastLog(`🔔 Grace period ended — ${BOSSES[bossLvl].name} attacks!`,'attack');
+      startBossTimer();
+    }
+  },1000);
+}
+
+function startBossTimer(){
+  if(bossTimerInt)clearInterval(bossTimerInt);
+  timerSec=40+bossLvl*5;
+  if(!isHost)return;
+  bossTimerInt=setInterval(()=>{
+    timerSec--;
+    broadcast({type:'timer',sec:timerSec});
+    updateTimer(timerSec,false);
+    if(timerSec<=0){clearInterval(bossTimerInt);doBossAttack();}
+  },1000);
+}
+
+function updateTimer(s,grace){
+  const el=document.getElementById('boss-timer');
+  el.textContent=s>0?s:(grace?'⏳':'⚡');
+  el.className=grace?'grace':s<=10?'danger':'';
+  document.getElementById('boss-timer-label').textContent=grace?'grace period':s>0?'til attack':'ATTACKING!';
+}
+
+function updateBossUI(){
+  const b=BOSSES[bossLvl]||BOSSES[0];
+  document.getElementById('boss-sprite').textContent=b.e;
+  document.getElementById('boss-sprite').className=bossEnraged?'rage':'';
+  document.getElementById('boss-name').textContent=b.name+' ';
+  document.getElementById('rage-tag').style.display=bossEnraged?'':'none';
+  document.getElementById('boss-desc').textContent=b.desc;
+  document.getElementById('level-num').textContent=bossLvl+1;
+  document.getElementById('arena').className=bossEnraged?'rage':'';
+  updateBossHP();
+  const bar=document.getElementById('phase-bar'); bar.innerHTML='';
+  BOSSES.forEach((_,i)=>{
+    const d=document.createElement('div');
+    d.className='phase-dot'+(i<bossLvl?' done':i===bossLvl?' current':'');
+    bar.appendChild(d);
+  });
+}
+
+function updateBossHP(){
+  const pct=Math.max(0,bossHP/bossMaxHP*100);
+  const bar=document.getElementById('boss-hp-bar');
+  bar.style.width=pct+'%';
+  bar.style.background=pct>60?'linear-gradient(90deg,#1a6030,#27ae60)':
+    pct>35?'linear-gradient(90deg,#8b6010,#d4a017)':
+    pct>15?'linear-gradient(90deg,#8b2a00,#e06020)':
+           'linear-gradient(90deg,#5a0808,#c0392b)';
+  document.getElementById('boss-hp-val').textContent=Math.max(0,Math.round(bossHP));
+  document.getElementById('boss-hp-max').textContent='/ '+bossMaxHP;
+  const b=BOSSES[bossLvl];
+  if(bossHP>0&&bossHP<=b.rage&&!bossEnraged&&isHost){
+    bossEnraged=true;
+    broadcast({type:'boss_update',hp:bossHP,enraged:true});
+    broadcastLog(`🔥 ${b.name} ENRAGES! Attacks become devastating!`,'rage');
+    document.getElementById('boss-phase-note').textContent='ENRAGED — attacks much harder';
+    if(!isSolo)generateAINarration('enrage',b,null,null);
+  } else if(bossEnraged){
+    document.getElementById('boss-phase-note').textContent='ENRAGED — attacks much harder';
+  } else {
+    document.getElementById('boss-phase-note').textContent='';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  BOSS ATTACK
+// ═══════════════════════════════════════════
+function doBossAttack(){
+  if(!isHost)return;
+  const b=BOSSES[bossLvl];
+  const atkPow=bossEnraged?b.rageAtk:b.atk;
+  const alive=Object.values(players).filter(p=>p.alive&&p.status!=='fled');
+  if(!alive.length){broadcastLog('No heroes to strike.','sys');startBossTimer();return;}
+  const damages=alive.map(p=>({id:p.id,dmg:Math.max(3,atkPow-p.def+rng(-12,14))}));
+  damages.forEach(({id,dmg})=>{
+    if(players[id]){players[id].hp=Math.max(0,players[id].hp-dmg);if(players[id].hp===0)players[id].alive=false;}
+  });
+  broadcast({type:'boss_attack',bossHP,damages,enraged:bossEnraged});
+  damages.forEach(({id,dmg})=>{
+    const p=players[id];
+    if(p){
+      broadcastLog(`${b.e} ${b.name} ${bossEnraged?'RAGES at':'strikes'} ${p.name} for ${dmg}!`,'attack');
+      if(!p.alive)broadcastLog(`☠ ${p.name} has fallen!`,'death');
+      else tryAutoConsume(p,true);
+    }
+  });
+  renderPlayers();checkWipeout();
+  if(!checkWipeout(true))startBossTimer();
+  if(!isSolo&&Math.random()<0.35)generateAINarration('attack',b,damages,alive);
+}
+
+function checkWipeout(check=false){
+  const anyAlive=Object.values(players).some(p=>p.alive);
+  if(!anyAlive){showOverlay(false);if(bossTimerInt)clearInterval(bossTimerInt);return true;}
+  return false;
+}
+
+// ═══════════════════════════════════════════
+//  AUTO-MODE LOOP  (host ticks for all)
+// ═══════════════════════════════════════════
+function startAutoModeLoop(){
+  if(autoModeInt)clearInterval(autoModeInt);
+  const timers={};
+  let summaryTick=0;
+  autoModeInt=setInterval(()=>{
+    if(!isHost)return;
+    summaryTick++;
+    Object.values(players).forEach(p=>{
+      if(!p.alive)return;
+      const cfg=AUTO_MODES[p.status];
+      if(!cfg)return;
+      if(!timers[p.id])timers[p.id]={mode:p.status,elapsed:0};
+      if(timers[p.id].mode!==p.status){timers[p.id]={mode:p.status,elapsed:0};return;}
+      timers[p.id].elapsed+=1000;
+      if(timers[p.id].elapsed>=cfg.tick){
+        timers[p.id].elapsed=0;
+        const fns={farming:tickFarm,mining:tickMine,training:tickTrain,dungeoning:tickDungeon,resting:tickInn};
+        const fn=fns[p.status];
+        if(fn)fn(p.id,p);
+      }
+    });
+    if(summaryTick>=5){
+      summaryTick=0;
+      const groups={};
+      Object.values(players).filter(p=>p.alive&&AUTO_MODES[p.status]).forEach(p=>{
+        if(!groups[p.status])groups[p.status]=[];
+        groups[p.status].push(p.avatar+p.name);
+      });
+      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠'};
+      const parts=Object.entries(groups).map(([m,n])=>`${emo[m]||''}${m}: ${n.join(', ')}`);
+      if(parts.length)broadcastLog('≫ '+parts.join('  |  '),'mode');
+    }
+  },1000);
+}
+
+// Auto-mode tick functions (called by host loop)
+function tickFarm(pid,p){
+  const qty=rng(1,3),gold=rng(5,14);
+  p.gold+=gold; addItemToInv(p,'food',qty);
+  broadcastLog(`🌾 ${p.name} farms. +${qty} rations, +${gold}g.`,'loot');
+  syncPlayer(pid);
+}
+function tickMine(pid,p){
+  const ore=ORES[Math.floor(Math.random()*ORES.length)];
+  addItemToInv(p,ore,1);
+  let msg=`⛏ ${p.name} mines. +1× ${ore}.`;
+  if(rng(1,10)===1){const d=rng(5,20);p.hp=Math.max(1,p.hp-d);msg+=` Rockfall! -${d} HP.`;}
+  broadcastLog(msg,'loot'); syncPlayer(pid);
+}
+function tickTrain(pid,p){
+  const cost=20+p.level*15;
+  if(p.gold<cost){broadcastLog(`📚 ${p.name} trains but needs ${cost}g (has ${p.gold}g). Idling.`,'sys');p.status='idle';syncPlayer(pid);return;}
+  p.gold-=cost; const xpGain=15+rng(0,15); p.xp+=xpGain;
+  let msg=`📚 ${p.name} trains. +${xpGain} XP, -${cost}g.`;
+  if(p.xp>=p.xpNeeded){doLevelUp(p);msg+=` ✨ Level up → Lv.${p.level}!`;}
+  broadcastLog(msg,'info'); syncPlayer(pid);
+}
+function tickDungeon(pid,p){
+  const gold=rng(30,80)+bossLvl*10;
+  const bonus=p.cls==='rogue'?Math.floor(gold*.4):0;
+  p.gold+=gold+bonus;
+  let msg=`🏚 ${p.name} explores the dungeon. +${gold+(bonus?`+${bonus}(rogue)`:'')}g!`;
+  if(rng(0,1)){const d=rng(15,55);p.hp=Math.max(0,p.hp-d);msg+=` Took ${d} dmg.`;if(p.hp<=0){p.alive=false;msg+=` ☠ Dies in the dark!`;p.status='idle';}}
+  if(rng(1,12)===1){const ri=ITEMS.filter(i=>i.rare)[Math.floor(Math.random()*ITEMS.filter(i=>i.rare).length)];addItemToInv(p,ri.id,1);msg+=` Finds ${ri.emoji}${ri.name}!`;}
+  broadcastLog(msg,'loot'); syncPlayer(pid);
+}
+function tickInn(pid,p){
+  if(p.hp>=p.maxHp){broadcastLog(`🏠 ${p.name} is fully healed. Leaving inn.`,'heal');p.status='idle';syncPlayer(pid);return;}
+  const cost=12+bossLvl*4;
+  if(p.gold>=cost){p.gold-=cost;const h=Math.min(p.maxHp-p.hp,40+rng(0,20));p.hp=Math.min(p.maxHp,p.hp+h);broadcastLog(`🏠 ${p.name} rests at inn. +${h} HP (-${cost}g).`,'heal');}
+  else{const h=Math.min(p.maxHp-p.hp,15+rng(0,10));p.hp=Math.min(p.maxHp,p.hp+h);broadcastLog(`🏠 ${p.name} rests cheaply. +${h} HP.`,'heal');}
+  syncPlayer(pid);
+}
+
+function doLevelUp(p){
+  p.xp-=p.xpNeeded; p.level++; p.xpNeeded=Math.floor(p.xpNeeded*1.4);
+  p.atk+=4+rng(0,3); p.def+=2+rng(0,1); p.maxHp+=25+rng(0,15);
+  p.hp=Math.min(p.hp+40,p.maxHp);
+}
+
+// ═══════════════════════════════════════════
+//  COMMAND ENTRY
+// ═══════════════════════════════════════════
+document.getElementById('cmd-send').addEventListener('click',sendCommand);
+document.getElementById('cmd-input').addEventListener('keydown',e=>{if(e.key==='Enter')sendCommand();});
+
+const CMD_ALIASES={
+  attack:['attack','atk','fight','strike','hit','slash','bash','charge','smite'],
+  train:['train','practice','study','level','improve','workout'],
+  farm:['farm','harvest','gather','forage'],
+  mine:['mine','dig','excavate','prospect','drill'],
+  dungeon:['dungeon','explore','raid','delve','crawl'],
+  shop:['shop','buy','purchase','store','market'],
+  inn:['inn','rest','sleep','recover','tavern','lodge'],
+  flee:['flee','run','escape','retreat'],
+  craft:['craft','forge','make','smith'],
+  scout:['scout','spy','check','observe'],
+  pray:['pray','supplicate','bless'],
+  inv:['inv','inventory','bag','gear','items'],
+  guild:['guild','class','change class','profession'],
+  special:['special','ability','skill','ultimate'],
+  revive:['revive','resurrect','raise'],
+  commands:['commands','help','?','guide'],
+  stop:['stop','idle','wait','stand'],
+};
+
+function parseVerb(tokens){
+  const v=tokens[0];
+  for(const[cmd,aliases]of Object.entries(CMD_ALIASES)){if(aliases.includes(v))return cmd;}
+  return v;
+}
+
+function sendCommand(){
+  const inp=document.getElementById('cmd-input');
+  const raw=inp.value.trim(); if(!raw)return;
+  inp.value='';
+  const tokens=raw.toLowerCase().split(/\s+/);
+  const p=players[myId]; if(!p)return;
+  addLog(`${p.avatar} ${p.name}: "${raw}"`, 'action');
+  sendToHost({type:'command',pid:myId,tokens,raw});
+}
+
+function processCommand(pid,tokens,raw){
+  if(!isHost)return;
+  const p=players[pid]; if(!p)return;
+  if(!p.alive){broadcastLog(`${p.name} is dead. Others can revive them.`,'death');return;}
+  const verb=parseVerb(tokens);
+  const args=tokens.slice(1);
+
+  // Mode-setting commands (start auto loop)
+  if(['farm','mine','train','dungeon','inn'].includes(verb)){
+    setMode(pid,p,verb);return;
+  }
+  // Single-action commands
+  switch(verb){
+    case 'attack':  stopMode(pid,p);doAttack(pid,p);break;
+    case 'special': stopMode(pid,p);doSpecial(pid,p);break;
+    case 'shop':    stopMode(pid,p);doShop(pid,p,args);break;
+    case 'flee':    stopMode(pid,p);doFlee(pid,p);break;
+    case 'craft':   stopMode(pid,p);doCraft(pid,p);break;
+    case 'scout':   doScout(pid,p);break;
+    case 'pray':    doPray(pid,p);break;
+    case 'inv':     doInventory(pid,p);break;
+    case 'guild':   openGuild(pid,p);break;
+    case 'revive':  doRevive(pid,p);break;
+    case 'stop':    stopMode(pid,p);broadcastLog(`${p.name} stands idle.`,'sys');break;
+    case 'commands':case 'help': doHelp(pid,p);break;
+    default: broadcastLog(`${p.name} mutters "${tokens.join(' ')}"… nothing happens.`,'sys');
+  }
+}
+
+function setMode(pid,p,mode){
+  const prev=p.status;
+  p.status=mode;
+  if(prev!==mode){
+    broadcastLog(`${p.avatar} ${p.name} enters ${mode} mode. (type "stop" to cancel)`, 'mode');
+    broadcast({type:'mode_change',id:pid,mode});
+    syncPlayer(pid);
+    updateModeChips(pid,mode);
+  }
+}
+function stopMode(pid,p){
+  if(AUTO_MODES[p.status]){p.status='idle';syncPlayer(pid);updateModeChips(pid,'idle');}
+}
+function updateModeChips(pid,mode){
+  if(pid!==myId)return;
+  document.querySelectorAll('.hchip').forEach(c=>{
+    c.classList.toggle('active-mode',c.dataset.cmd===mode);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  COMMANDS
+// ═══════════════════════════════════════════
+function doAttack(pid,p){
+  if(bossHP<=0){broadcastLog('The boss is already slain.','sys');return;}
+  if(graceActive){broadcastLog(`⏳ Grace period active — boss cannot be attacked yet.`,'sys');return;}
+  const b=BOSSES[bossLvl];
+  let dmg=Math.max(1,p.atk+rng(-6,10)-Math.floor(bossLvl*1.2));
+  if(p.cls==='berserker'&&p.hp/p.maxHp<0.4){dmg=Math.floor(dmg*1.5);}
+  p.totalDmg=(p.totalDmg||0)+dmg;
+  bossHP=Math.max(0,bossHP-dmg);
+  // XP per attack
+  const xpGain=3+bossLvl*2+rng(0,4);
+  p.xp+=xpGain;
+  let lvlMsg='';
+  while(p.xp>=p.xpNeeded){doLevelUp(p);lvlMsg+=` ✨Lv.${p.level}!`;}
+  broadcastLog(`${p.avatar} ${p.name} strikes ${b.name} for ${dmg} dmg! (+${xpGain} XP${lvlMsg})`,'action');
+  broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});
+  updateBossHP(); p.status='fighting'; syncPlayer(pid);
+  if(checkBossDead())return;
+  // Counter-attack: 35% chance, 50% if enraged
+  if(Math.random()<(bossEnraged?0.50:0.35)){
+    const atkPow=bossEnraged?b.rageAtk:b.atk;
+    const cdmg=Math.max(2,atkPow-p.def+rng(-8,10));
+    p.hp=Math.max(0,p.hp-cdmg);
+    let cMsg=`${b.e} ${b.name} retaliates — hits ${p.name} for ${cdmg}!`;
+    if(p.hp<=0){p.alive=false;cMsg+=` ☠ ${p.name} falls!`;}
+    broadcastLog(cMsg,'attack');
+    tryAutoConsume(p,true);
+    syncPlayer(pid);
+    if(!p.alive)checkWipeout();
+  }
+}
+
+function doShop(pid,p,args){
+  if(!args.length){
+    broadcastLog('🛒 Shop: '+ITEMS.map(i=>`${i.emoji}${i.name}(${i.cost}g)`).join(' · '),'info');
+    broadcastLog('Type: shop <item name>','sys'); return;
+  }
+  const q=args.join(' ');
+  const item=ITEMS.find(i=>i.name.toLowerCase().includes(q)||i.id===q);
+  if(!item){broadcastLog(`No item matching "${q}".`,'sys');return;}
+  if(p.gold<item.cost){broadcastLog(`${p.name} can't afford ${item.emoji}${item.name} (${item.cost}g, has ${p.gold}g).`,'sys');return;}
+  p.gold-=item.cost;
+  if(!item.consumable){
+    if(item.effect==='atk'){p.atk+=item.val;}else if(item.effect==='def'){p.def+=item.val;}
+    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}! (${item.effect.toUpperCase()} +${item.val})`,'loot');
+  } else {addItemToInv(p,item.id,1);broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}.`,'loot');}
+  syncPlayer(pid);
+}
+
+function doFlee(pid,p){
+  const ok=Math.random()<(p.inventory.some(i=>i.id==='boots')?0.9:p.cls==='ranger'?0.75:0.5);
+  if(ok){p.status='fled';broadcastLog(`${p.avatar} ${p.name} flees to safety!`,'flee');}
+  else{const d=rng(15,40);p.hp=Math.max(0,p.hp-d);broadcastLog(`${p.avatar} ${p.name} tries to flee — hit for ${d}!`,'attack');if(p.hp<=0){p.alive=false;broadcastLog(`☠ ${p.name} dies fleeing.`,'death');}}
+  syncPlayer(pid);
+}
+
+function doCraft(pid,p){
+  for(const r of CRAFT_RECIPES){
+    if(Object.entries(r.needs).every(([ore,qty])=>p.inventory.find(i=>i.id===ore&&i.qty>=qty))){
+      Object.entries(r.needs).forEach(([ore,qty])=>removeFromInv(p,ore,qty));
+      if(r.stat==='atk')p.atk+=r.val; else p.def+=r.val;
+      broadcastLog(`${p.avatar} ${p.name} crafts ${r.gives}! ${r.stat.toUpperCase()} +${r.val}`,'loot');
+      syncPlayer(pid); return;
+    }
+  }
+  broadcastLog(`${p.name} lacks materials. Mine for ore first. Recipes: 2iron→sword, 3stone→buckler, 2gold→charm, mithril+iron→mithril edge.`,'sys');
+}
+
+function doScout(pid,p){
+  const b=BOSSES[bossLvl];
+  const next=BOSSES[Math.min(bossLvl+1,9)];
+  broadcastLog(`🔭 ${p.name} scouts: ${b.e}${b.name} has ${bossHP}/${bossMaxHP} HP | ATK ${bossEnraged?b.rageAtk:b.atk}${bossEnraged?' (ENRAGED)':''} | Rages at ${b.rage} HP`,'info');
+  if(bossLvl<9)broadcastLog(`Next boss: ${next.name} (HP:${next.hp}, ATK:${next.atk}).`,'sys');
+}
+
+function doPray(pid,p){
+  if(p.cls==='cleric'){
+    const h=rng(50,90);
+    Object.values(players).filter(q=>q.alive).forEach(q=>{q.hp=Math.min(q.maxHp,q.hp+h);syncPlayer(q.id);});
+    broadcastLog(`✨ ${p.name} channels Holy Light — all heroes +${h} HP!`,'heal');
+  } else {
+    const h=rng(15,35); p.hp=Math.min(p.maxHp,p.hp+h);
+    broadcastLog(`🙏 ${p.name} prays. +${h} HP.`,'heal'); syncPlayer(pid);
+  }
+}
+
+function doInventory(pid,p){
+  if(!p.inventory.length){broadcastLog(`${p.name}'s bag is empty. Gold: ${p.gold}g.`,'sys');return;}
+  broadcastLog(`${p.avatar} ${p.name}: ${p.inventory.map(i=>i.id+'×'+i.qty).join(', ')} | Gold: ${p.gold}g | Lv.${p.level} (${p.xp}/${p.xpNeeded} XP)`,'info');
+}
+
+function openGuild(pid,p){
+  if(pid!==myId){broadcastLog(`${p.name} visits the guild.`,'info');return;}
+  guildOpenForPid=pid;
+  // Highlight current class
+  document.querySelectorAll('.class-btn').forEach((btn,i)=>{
+    btn.classList.toggle('current',CLASSES[i].id===p.cls);
+  });
+  document.getElementById('guild-desc').textContent=`Change class for gold. Current: ${p.clsEmoji} ${p.clsName}. You have ${p.gold}g.`;
+  document.getElementById('guild-modal').className='guild-modal show';
+}
+document.getElementById('guild-close').addEventListener('click',()=>{
+  document.getElementById('guild-modal').className='guild-modal';
+  guildOpenForPid=null;
+});
+
+function doClassChange(clsId){
+  const pid=guildOpenForPid; if(!pid)return;
+  // Queue as a command through the normal flow
+  sendToHost({type:'command',pid,tokens:['classchange',clsId],raw:'classchange '+clsId});
+  document.getElementById('guild-modal').className='guild-modal';
+  guildOpenForPid=null;
+}
+
+// Handle classchange internally
+const _origProcess=processCommand;
+// We extend processCommand to handle classchange
+const _procCmd=processCommand;
+// Patch via direct inline handling in processCommand switch
+// (handled via 'classchange' verb below — added to switch)
+
+// Re-override processCommand to catch classchange
+(()=>{
+  const orig=window.processCommand;
+  window.processCommand=function(pid,tokens,raw){
+    if(tokens[0]==='classchange'){
+      doActualClassChange(pid,tokens[1]); return;
+    }
+    orig(pid,tokens,raw);
+  };
+})();
+
+function doActualClassChange(pid,clsId){
+  const p=players[pid]; if(!p)return;
+  const newCls=CLASSES.find(c=>c.id===clsId); if(!newCls)return;
+  if(newCls.id===p.cls){broadcastLog(`${p.name} is already a ${newCls.name}.`,'sys');return;}
+  if(p.gold<newCls.cost){broadcastLog(`${p.name} needs ${newCls.cost}g to become a ${newCls.name} (has ${p.gold}g).`,'sys');return;}
+  const oldCls=CLASSES.find(c=>c.id===p.cls)||CLASSES[0];
+  // Remove old class stat bonuses, apply new
+  p.atk=p.atk-oldCls.atkB+newCls.atkB;
+  p.def=p.def-oldCls.defB+newCls.defB;
+  const hpDiff=newCls.hpB-oldCls.hpB;
+  p.maxHp=p.maxHp+hpDiff; p.hp=Math.max(1,Math.min(p.maxHp,p.hp+hpDiff));
+  p.gold-=newCls.cost; p.cls=newCls.id; p.clsName=newCls.name; p.clsEmoji=newCls.emoji;
+  broadcastLog(`⚜ ${p.name} becomes a ${newCls.emoji} ${newCls.name}! (Special: ${newCls.special})`, 'victory');
+  syncPlayer(pid);
+}
+
+function doSpecial(pid,p){
+  const c=CLASSES.find(x=>x.id===p.cls);
+  if(!c||c.id==='villager'){
+    // Villager special: Plead — delay boss timer
+    timerSec=Math.min(timerSec+8,99);
+    broadcastLog(`🧑 ${p.name} PLEADS with the boss! Boss timer +8s!`,'info');
+    if(isHost)broadcast({type:'timer',sec:timerSec}); return;
+  }
+  if(graceActive&&['warrior','mage','ranger','rogue','berserker'].includes(c.id)){
+    broadcastLog(`${p.name}: boss can't be attacked during grace period.`,'sys');return;
+  }
+  const coolKey='cd_'+pid;
+  if(window[coolKey]&&Date.now()-window[coolKey]<30000){broadcastLog(`${p.name}'s ${c.special} is on cooldown (${Math.ceil((30000-(Date.now()-window[coolKey]))/1000)}s).`,'sys');return;}
+  window[coolKey]=Date.now();
+  const b=BOSSES[bossLvl];
+  switch(p.cls){
+    case 'warrior':{const d=Math.floor(p.atk*1.8);bossHP=Math.max(0,bossHP-d);p.totalDmg+=d;broadcastLog(`${p.avatar} ${p.name} SHIELD BASHES for ${d}!`,'action');broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});updateBossHP();checkBossDead();break;}
+    case 'mage':{const d=Math.floor(p.atk*2.5+rng(20,60));bossHP=Math.max(0,bossHP-d);p.totalDmg+=d;broadcastLog(`${p.avatar} ${p.name} ARCANE BURSTS for ${d}!`,'action');broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});updateBossHP();checkBossDead();break;}
+    case 'ranger':{const d=Math.floor(p.atk*1.5);bossHP=Math.max(0,bossHP-d);p.totalDmg+=d;timerSec=Math.min(timerSec+12,99);broadcastLog(`${p.avatar} ${p.name} PINS for ${d} + 12s timer!`,'action');broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});if(isHost)broadcast({type:'timer',sec:timerSec});updateBossHP();checkBossDead();break;}
+    case 'rogue':{const d=Math.floor(p.atk*2.2);const stolen=rng(30,70);bossHP=Math.max(0,bossHP-d);p.totalDmg+=d;p.gold+=stolen;broadcastLog(`${p.avatar} ${p.name} BACKSTABS for ${d} and steals ${stolen}g!`,'action');broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});updateBossHP();checkBossDead();break;}
+    case 'cleric':{Object.values(players).filter(q=>q.alive).forEach(q=>{q.hp=Math.min(q.maxHp,q.hp+120);syncPlayer(q.id);});broadcastLog(`✨ ${p.name} HOLY LIGHT — all heroes +120 HP!`,'heal');break;}
+    case 'berserker':{const d=Math.floor(p.atk*3);bossHP=Math.max(0,bossHP-d);p.totalDmg+=d;p.hp=Math.max(1,p.hp-40);broadcastLog(`💢 ${p.name} BLOOD FRENZIES for ${d} (costs 40 HP)!`,'action');broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});updateBossHP();checkBossDead();break;}
+  }
+  syncPlayer(pid);
+}
+
+function doRevive(pid,p){
+  const ash=p.inventory.find(i=>i.id==='revive'&&i.qty>0);
+  if(!ash){broadcastLog(`${p.name} has no Phoenix Ash. Buy at shop.`,'sys');return;}
+  const target=Object.values(players).find(q=>!q.alive&&q.id!==pid);
+  if(!target){broadcastLog('No fallen heroes nearby.','sys');return;}
+  ash.qty--;if(ash.qty===0)p.inventory=p.inventory.filter(i=>i.id!=='revive');
+  target.alive=true;target.hp=Math.floor(target.maxHp*.4);target.status='revived';
+  broadcastLog(`🪶 ${p.name} revives ${target.name} with Phoenix Ash!`,'heal');
+  syncPlayer(pid);syncPlayer(target.id);
+}
+
+function doHelp(pid,p){
+  broadcastLog('━━ Commands ━━','sep');
+  broadcastLog('attack / special — fight the boss (special has 30s cooldown)','info');
+  broadcastLog('farm / mine / train / dungeon / inn — AUTO MODE (runs continuously, type "stop" to cancel)','mode');
+  broadcastLog('shop [item] — buy gear. craft — forge from mined ore.','info');
+  broadcastLog('flee — try to escape. pray — heal (cleric heals party). scout — spy on boss.','info');
+  broadcastLog('guild — change class (costs gold). inv — check your bag.','info');
+  broadcastLog('revive — use Phoenix Ash on dead ally.','info');
+}
+
+// ═══════════════════════════════════════════
+//  BOSS DEATH
+// ═══════════════════════════════════════════
+function checkBossDead(){
+  if(bossHP>0)return false;
+  if(bossTimerInt)clearInterval(bossTimerInt);
+  if(graceTimerInt)clearInterval(graceTimerInt);
+  const b=BOSSES[bossLvl];
+  broadcastLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`,'sep');
+  broadcastLog(`🏆 ${b.name} SLAIN! Victory!`,'victory');
+  if(!isSolo)generateAINarration('victory',b,null,Object.values(players).filter(p=>p.alive));
+  Object.values(players).filter(p=>p.alive).forEach(p=>{
+    const g=b.gold+rng(-10,15);p.gold+=g;p.xp+=b.xp;p.kills=(p.kills||0)+1;
+    broadcastLog(`${p.avatar} ${p.name} earns ${g}g, ${b.xp} XP.`,'loot');
+    while(p.xp>=p.xpNeeded){doLevelUp(p);broadcastLog(`✨ ${p.name} levels up → Lv.${p.level}!`,'victory');}
+    syncPlayer(p.id);
+  });
+  setTimeout(()=>{
+    const next=bossLvl+1;
+    if(next>=BOSSES.length){broadcastLog('⭐ ALL BOSSES VANQUISHED. The realm is at peace.','victory');showOverlay(true,true);return;}
+    Object.values(players).forEach(p=>{p.alive=true;p.hp=p.maxHp;p.status='idle';});
+    if(isHost)loadBoss(next);
+    renderPlayers();
+  },3000);
+  return true;
+}
+
+// ═══════════════════════════════════════════
+//  AUTO-CONSUME
+// ═══════════════════════════════════════════
+function tryAutoConsume(p,bc=false){
+  if(p.hp/p.maxHp>0.35)return;
+  for(const o of [{id:'elixir',h:220,e:'💎'},{id:'potion',h:80,e:'🧪'},{id:'food',h:35,e:'🍞'}]){
+    const s=p.inventory.find(i=>i.id===o.id&&i.qty>0);
+    if(s){s.qty--;if(s.qty===0)p.inventory=p.inventory.filter(i=>i.id!==o.id);p.hp=Math.min(p.maxHp,p.hp+o.h);
+      const m=`${o.e} ${p.name} auto-uses ${o.id} (+${o.h} HP).`;
+      if(bc)broadcastLog(m,'heal'); else addLog(m,'heal'); return;}
+  }
+}
+
+// ═══════════════════════════════════════════
+//  AI NARRATION
+// ═══════════════════════════════════════════
+let aiTyping=false;
+async function generateBossIntro(boss){
+  if(aiTyping)return;
+  const party=Object.values(players).map(p=>`${p.name} the ${p.clsName}`).join(', ');
+  await callAI(`You are a dramatic fantasy RPG narrator. In 1-2 vivid sentences, describe the terrifying arrival of "${boss.name}" (${boss.desc}) as heroes ${party} prepare to fight. Punchy and atmospheric.`);
+}
+async function generateAINarration(type,boss,damages,aliveP){
+  if(aiTyping)return;
+  let prompt='';
+  if(type==='attack'){const names=damages?.map(d=>players[d.id]?.name).filter(Boolean).join(', ')||'the heroes';prompt=`In 1 gritty sentence, describe ${boss.name} attacking ${names}. Be brutal.`;}
+  else if(type==='enrage'){prompt=`In 1 terrifying sentence, describe ${boss.name} becoming ENRAGED. Eyes blazing, power surging.`;}
+  else if(type==='victory'){const names=aliveP?.map(p=>p.name).join(', ')||'the heroes';prompt=`In 1-2 triumphant sentences, celebrate ${names} slaying ${boss.name}. Be rousing and epic.`;}
+  if(prompt)await callAI(prompt);
+}
+async function callAI(prompt){
+  aiTyping=true;
+  const log=document.getElementById('log');
+  const dot=document.createElement('div');
+  dot.className='log-line ai';
+  dot.innerHTML=`<span class="log-ai-tag">AI</span><span class="typing-dot"><span></span><span></span><span></span></span>`;
+  log.appendChild(dot);log.scrollTop=log.scrollHeight;
+  try{
+    const res=await fetch('https://api.anthropic.com/v1/messages',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({model:'claude-sonnet-4-20250514',max_tokens:1000,messages:[{role:'user',content:prompt}]})});
+    const data=await res.json();
+    const text=data.content?.find(c=>c.type==='text')?.text||'';
+    dot.remove();
+    if(text.trim())broadcastLog('📖 '+text.trim().slice(0,300),'ai');
+  }catch(e){dot.remove();}
+  aiTyping=false;
+}
+
+// ═══════════════════════════════════════════
+//  MINIMAP
+// ═══════════════════════════════════════════
+function startMinimapLoop(){
+  if(minimapInt)clearInterval(minimapInt);
+  minimapInt=setInterval(drawMinimap,800);
+  drawMinimap();
+}
+
+function drawMinimap(){
+  const canvas=document.getElementById('minimap-canvas');
+  if(!canvas)return;
+  const ctx=canvas.getContext('2d');
+  const W=canvas.width, H=canvas.height;
+  ctx.clearRect(0,0,W,H);
+  // Background
+  ctx.fillStyle='#08090d';ctx.fillRect(0,0,W,H);
+  // Draw zones
+  Object.values(ZONES).forEach(z=>{
+    ctx.fillStyle=z.color; ctx.fillRect(z.x,z.y,z.w,z.h);
+    ctx.strokeStyle='#2e3545'; ctx.lineWidth=1; ctx.strokeRect(z.x,z.y,z.w,z.h);
+    ctx.fillStyle='#5a5448'; ctx.font='7px sans-serif'; ctx.textAlign='center';
+    ctx.fillText(z.label,z.x+z.w/2,z.labelY);
+  });
+  // Draw players
+  Object.values(players).forEach((p,i)=>{
+    const zoneName=MODE_ZONE[p.status]||'village';
+    const z=ZONES[zoneName];
+    if(!z)return;
+    // Spread players within zone
+    const count=Object.values(players).filter(q=>(MODE_ZONE[q.status]||'village')===zoneName).length;
+    const idx=Object.values(players).filter(q=>(MODE_ZONE[q.status]||'village')===zoneName&&q.id<=p.id).length-1;
+    const cols=Math.ceil(Math.sqrt(count));
+    const col=idx%cols, row=Math.floor(idx/cols);
+    const px=z.x+8+(col*(z.w-16)/(Math.max(cols,1)));
+    const py=z.y+16+(row*12);
+    // Dot
+    ctx.fillStyle=p.alive?(p.id===myId?'#f0bc2e':'#2ecc71'):'#c0392b';
+    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill();
+    // Name
+    ctx.fillStyle=p.id===myId?'#f0bc2e':'#8a8270';
+    ctx.font=`${p.id===myId?'bold ':''}7px sans-serif`;
+    ctx.textAlign='center';
+    ctx.fillText(p.name.slice(0,6),px,py-6);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════
+function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+function addItemToInv(p,id,qty){const e=p.inventory.find(i=>i.id===id);if(e)e.qty+=qty;else p.inventory.push({id,qty});}
+function removeFromInv(p,id,qty){const e=p.inventory.find(i=>i.id===id);if(!e)return;e.qty-=qty;if(e.qty<=0)p.inventory=p.inventory.filter(i=>i.id!==id);}
+
+function syncPlayer(pid){
+  if(!players[pid])return;
+  tryAutoConsume(players[pid]);
+  renderPlayers();
+  if(isHost)broadcast({type:'player_update',id:pid,player:cleanP(players[pid])});
+}
+
+function broadcastLog(text,cls){addLog(text,cls);if(isHost&&!isSolo)broadcast({type:'log',text,cls});}
+
+function addLog(text,cls='sys'){
+  const log=document.getElementById('log');
+  const d=document.createElement('div');
+  d.className='log-line '+(cls||'sys');
+  if(cls==='sep'){d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return;}
+  const now=new Date();
+  d.innerHTML=`<span class="log-time">${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}</span>${cls==='ai'?'<span class="log-ai-tag">AI</span>':''}${escHtml(text)}`;
+  log.appendChild(d);log.scrollTop=log.scrollHeight;
+}
+function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+
+function renderPlayers(){
+  const list=document.getElementById('player-list');
+  list.innerHTML='';
+  const ps=Object.values(players);
+  document.getElementById('party-count').textContent=ps.length;
+  ps.forEach(p=>{
+    const hpPct=Math.max(0,p.hp/p.maxHp*100);
+    const xpPct=Math.min(100,p.xp/p.xpNeeded*100);
+    const fillCls='mini-hp-fill'+(hpPct<15?' crit':hpPct<35?' low':'');
+    const card=document.createElement('div');
+    card.className='player-card'+(p.id===myId?' me':'')+(p.alive?'':' dead');
+    card.innerHTML=`
+      <div class="pc-top">
+        <div class="pc-avatar">${p.avatar}</div>
+        <div class="pc-right">
+          <div class="pc-name">${escHtml(p.name)}${p.id===myId?' <span style="color:var(--amber3);font-size:.58rem">YOU</span>':''}</div>
+          <div class="pc-class">${p.clsEmoji} ${p.clsName}</div>
+          <div class="pc-mode">${p.alive?p.status:'☠ dead'}</div>
+        </div>
+      </div>
+      <div class="mini-hp"><div class="${fillCls}" style="width:${hpPct}%"></div></div>
+      <div class="pc-bar-row">
+        <span class="pc-bar-lbl">XP</span>
+        <div class="pc-xpbar-outer"><div class="pc-xpfill" style="width:${xpPct}%"></div></div>
+        <span class="pc-bar-num">${p.xp}/${p.xpNeeded}</span>
+      </div>
+      <div class="pc-stats">
+        <span class="pc-stat">HP <b>${Math.max(0,p.hp)}/${p.maxHp}</b></span>
+        <span class="pc-stat">Lv<b>${p.level}</b></span>
+        <span class="pc-stat">ATK<b>${p.atk}</b></span>
+        <span class="pc-stat">DEF<b>${p.def}</b></span>
+        <span class="pc-stat">💰<b>${p.gold}</b></span>
+      </div>`;
+    list.appendChild(card);
+  });
+}
+
+// ═══════════════════════════════════════════
+//  OVERLAY
+// ═══════════════════════════════════════════
+function showOverlay(win,legendary=false){
+  document.getElementById('overlay-title').textContent=legendary?'⭐ LEGENDARY!':win?'🏆 Victory!':'☠ Party Wiped';
+  document.getElementById('overlay-msg').textContent=legendary
+    ?'All ten bosses vanquished. The realm rests.':win?'The beast falls. A new challenge awaits.':'Every hero has fallen. Try again?';
+  const me=players[myId];
+  if(me)document.getElementById('overlay-stats').innerHTML=
+    `<b>${me.name}</b> the ${me.clsEmoji} ${me.clsName}<br>`+
+    `Level <b>${me.level}</b> · Gold <b>${me.gold}</b> · Total damage dealt: <b>${me.totalDmg||0}</b><br>`+
+    `Bosses slain: <b>${me.kills||0}</b>`;
+  document.getElementById('overlay-btn').textContent=legendary?'Play Again':'Try Again';
+  document.getElementById('overlay').className='overlay show';
+}
+
+document.getElementById('overlay-btn').addEventListener('click',()=>{
+  document.getElementById('overlay').className='overlay';
+  Object.values(players).forEach(p=>{p.hp=p.maxHp;p.alive=true;p.status='idle';});
+  renderPlayers();
+  if(isHost){if(!isSolo)broadcast({type:'reset',lvl:bossLvl});loadBoss(bossLvl);}
+});
+
+function resetForRetry(lvl){
+  Object.values(players).forEach(p=>{p.hp=p.maxHp;p.alive=true;p.status='idle';});
+  bossLvl=lvl;bossEnraged=false;
+  const b=BOSSES[lvl];bossHP=b.hp;bossMaxHP=b.hp;
+  updateBossUI();renderPlayers();
+}
+
+renderPlayers();
+</script>
+</body>
+</html>
