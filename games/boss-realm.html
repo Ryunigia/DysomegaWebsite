@@ -199,7 +199,10 @@ input[type=text]::placeholder{color:var(--text3)}
   <div class="lobby-box">
     <h2>Your Hero</h2>
     <div class="lbl">Name</div>
-    <input type="text" id="name-input" placeholder="Hero name…" maxlength="16">
+    <div style="display:flex;gap:6px">
+      <input type="text" id="name-input" placeholder="Hero name…" maxlength="16" style="flex:1">
+      <button class="btn btn-ghost" id="name-shuffle" title="Random name" style="padding:9px 11px;font-size:1rem;flex-shrink:0">🎲</button>
+    </div>
     <div class="lbl">Avatar</div>
     <div class="avatar-grid" id="avatar-row"></div>
   </div>
@@ -320,21 +323,31 @@ const BOSSES=[
 ];
 
 const ITEMS=[
-  {id:'sword',    name:'Iron Sword',  cost:80,  effect:'atk',val:15,emoji:'⚔️'},
-  {id:'steel',    name:'Steel Blade', cost:200, effect:'atk',val:35,emoji:'🗡️'},
-  {id:'mageblade',name:'Mageblade',   cost:380, effect:'atk',val:60,emoji:'🌟',rare:true},
-  {id:'shield',   name:'Buckler',     cost:65,  effect:'def',val:10,emoji:'🛡️'},
-  {id:'chainmail',name:'Chainmail',   cost:160, effect:'def',val:28,emoji:'🪖'},
-  {id:'platemail',name:'Plate',       cost:350, effect:'def',val:55,emoji:'⛨',rare:true},
+  {id:'sword',    name:'Iron Sword',  cost:80,  effect:'atk',val:15,emoji:'⚔️',slot:'weapon'},
+  {id:'steel',    name:'Steel Blade', cost:200, effect:'atk',val:35,emoji:'🗡️',slot:'weapon'},
+  {id:'mageblade',name:'Mageblade',   cost:380, effect:'atk',val:60,emoji:'🌟',slot:'weapon',rare:true},
+  {id:'shield',   name:'Buckler',     cost:65,  effect:'def',val:10,emoji:'🛡️',slot:'offhand'},
+  {id:'chainmail',name:'Chainmail',   cost:160, effect:'def',val:28,emoji:'🪖',slot:'armor'},
+  {id:'platemail',name:'Plate',       cost:350, effect:'def',val:55,emoji:'⛨', slot:'armor',rare:true},
   {id:'potion',   name:'Potion',      cost:55,  effect:'heal',val:80,emoji:'🧪',consumable:true},
   {id:'elixir',   name:'Elixir',      cost:220, effect:'heal',val:220,emoji:'💎',consumable:true,rare:true},
   {id:'food',     name:'Rations',     cost:18,  effect:'heal',val:35,emoji:'🍞',consumable:true},
-  {id:'boots',    name:'Speed Boots', cost:130, effect:'flee',val:1, emoji:'👟'},
-  {id:'tome',     name:'Spell Tome',  cost:320, effect:'atk',val:55,emoji:'📖'},
+  {id:'boots',    name:'Speed Boots', cost:130, effect:'flee',val:1, emoji:'👟',slot:'feet'},
+  {id:'tome',     name:'Spell Tome',  cost:320, effect:'atk',val:55,emoji:'📖',slot:'weapon'},
   {id:'revive',   name:'Phoenix Ash', cost:400, effect:'revive',val:1,emoji:'🪶',consumable:true,rare:true},
 ];
 
 const ORES=['stone','stone','stone','iron','iron','gold','mithril'];
+const ANIMALS=['Panda','Snake','Tiger','Wolf','Eagle','Shark','Fox','Bear','Hawk','Lynx',
+  'Cobra','Raven','Otter','Viper','Moose','Bison','Crane','Hyena','Zebra','Rhino',
+  'Gecko','Falcon','Bison','Stoat','Dingo','Tapir','Okapi','Quail','Mamba','Weasel',
+  'Badger','Marten','Ferret','Puffin','Iguana','Kestrel','Ocelot','Wombat','Narwhal','Capybara'];
+function randomAnimalName(){
+  const a=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  let b=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  while(b===a)b=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
+  return a+b;
+}
 const CRAFT_RECIPES=[
   {needs:{iron:2},  gives:'Iron Sword',   stat:'atk',val:20},
   {needs:{stone:3}, gives:'Stone Buckler',stat:'def',val:9},
@@ -386,6 +399,16 @@ let guildOpenForPid=null;
 //  LOBBY BUILD
 // ═══════════════════════════════════════════
 (()=>{
+  // Auto-generate a random name on load
+  const nameInp=document.getElementById('name-input');
+  nameInp.placeholder=randomAnimalName();
+  document.getElementById('name-shuffle').addEventListener('click',()=>{
+    nameInp.value=randomAnimalName();
+    nameInp.focus();
+  });
+  // Pre-fill with a random name so it's never empty
+  nameInp.value=randomAnimalName();
+
   const ar=document.getElementById('avatar-row');
   AVATARS.forEach((a,i)=>{
     const b=document.createElement('button');
@@ -396,7 +419,7 @@ let guildOpenForPid=null;
   });
   // hint chips
   const hc=document.getElementById('cmd-hints');
-  ['attack','special','train','farm','mine','dungeon','shop','inn','flee','scout','pray','craft','guild','inv','commands'].forEach(h=>{
+  ['attack','special','equip','train','farm','mine','dungeon','shop','inn','flee','scout','craft','guild','inv','commands'].forEach(h=>{
     const d=document.createElement('div');
     d.className='hchip'; d.textContent=h; d.dataset.cmd=h;
     d.onclick=()=>{const inp=document.getElementById('cmd-input');inp.value=h;inp.focus();};
@@ -427,7 +450,8 @@ function setStatus(m,c='var(--text2)'){const e=document.getElementById('lobby-st
 //  SOLO ENTRY
 // ═══════════════════════════════════════════
 document.getElementById('solo-btn').addEventListener('click',()=>{
-  const name=(document.getElementById('name-input').value.trim()||'Hero').slice(0,16);
+  const ni=document.getElementById('name-input');
+  const name=(ni.value.trim()||ni.placeholder||'Hero').slice(0,16);
   isSolo=true; isHost=true;
   myId='solo-'+Math.random().toString(36).slice(2,8);
   roomId='SOLO';
@@ -439,7 +463,8 @@ document.getElementById('solo-btn').addEventListener('click',()=>{
 //  MULTIPLAYER ENTRY
 // ═══════════════════════════════════════════
 document.getElementById('join-btn').addEventListener('click',()=>{
-  const name=(document.getElementById('name-input').value.trim()||'Hero').slice(0,16);
+  const ni=document.getElementById('name-input');
+  const name=(ni.value.trim()||ni.placeholder||'Hero').slice(0,16);
   const code=document.getElementById('room-input').value.trim().toUpperCase();
   setStatus('Connecting…');
   initPeer(name,code);
@@ -548,7 +573,8 @@ function mkPlayer(id,name,avatar,clsId){
     hp:200+c.hpB, maxHp:200+c.hpB,
     atk:20+c.atkB, def:5+c.defB,
     gold:50, xp:0, level:1, xpNeeded:60,
-    inventory:[], status:'idle', alive:true,
+    inventory:[], equipped:{weapon:null,armor:null,offhand:null,feet:null},
+    status:'idle', alive:true,
     kills:0, totalDmg:0
   };
 }
@@ -729,13 +755,16 @@ function startAutoModeLoop(){
     if(summaryTick>=5){
       summaryTick=0;
       const groups={};
-      Object.values(players).filter(p=>p.alive&&AUTO_MODES[p.status]).forEach(p=>{
-        if(!groups[p.status])groups[p.status]=[];
-        groups[p.status].push(p.avatar+p.name);
+      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠',fighting:'⚔️',attacking:'⚔️',fled:'🏃',idle:'💤'};
+      Object.values(players).filter(p=>p.alive).forEach(p=>{
+        const s=p.status||'idle';
+        if(!groups[s])groups[s]=[];
+        groups[s].push(p.avatar+p.name);
       });
-      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠'};
-      const parts=Object.entries(groups).map(([m,n])=>`${emo[m]||''}${m}: ${n.join(', ')}`);
-      if(parts.length)broadcastLog('≫ '+parts.join('  |  '),'mode');
+      const parts=Object.entries(groups)
+        .filter(([m])=>m!=='idle'||Object.keys(groups).length===1)
+        .map(([m,n])=>`${emo[m]||'●'}${m}: ${n.join(', ')}`);
+      if(parts.length)broadcastLog('≫ '+parts.join('  ·  '),'mode');
     }
   },1000);
 }
@@ -802,10 +831,12 @@ const CMD_ALIASES={
   flee:['flee','run','escape','retreat'],
   craft:['craft','forge','make','smith'],
   scout:['scout','spy','check','observe'],
-  pray:['pray','supplicate','bless'],
+
   inv:['inv','inventory','bag','gear','items'],
   guild:['guild','class','change class','profession'],
   special:['special','ability','skill','ultimate'],
+  equip:['equip','wear','wield','put on','use'],
+  unequip:['unequip','remove','take off'],
   revive:['revive','resurrect','raise'],
   commands:['commands','help','?','guide'],
   stop:['stop','idle','wait','stand'],
@@ -835,8 +866,9 @@ function processCommand(pid,tokens,raw){
   const args=tokens.slice(1);
 
   // Mode-setting commands (start auto loop)
-  if(['farm','mine','train','dungeon','inn'].includes(verb)){
-    setMode(pid,p,verb);return;
+  const VERB_TO_STATUS={farm:'farming',mine:'mining',train:'training',dungeon:'dungeoning',inn:'resting'};
+  if(VERB_TO_STATUS[verb]){
+    setMode(pid,p,VERB_TO_STATUS[verb]);return;
   }
   // Single-action commands
   switch(verb){
@@ -846,9 +878,11 @@ function processCommand(pid,tokens,raw){
     case 'flee':    stopMode(pid,p);doFlee(pid,p);break;
     case 'craft':   stopMode(pid,p);doCraft(pid,p);break;
     case 'scout':   doScout(pid,p);break;
-    case 'pray':    doPray(pid,p);break;
+
     case 'inv':     doInventory(pid,p);break;
     case 'guild':   openGuild(pid,p);break;
+    case 'equip':   doEquip(pid,p,args);break;
+    case 'unequip': doUnequip(pid,p,args);break;
     case 'revive':  doRevive(pid,p);break;
     case 'stop':    stopMode(pid,p);broadcastLog(`${p.name} stands idle.`,'sys');break;
     case 'commands':case 'help': doHelp(pid,p);break;
@@ -921,14 +955,18 @@ function doShop(pid,p,args){
   if(p.gold<item.cost){broadcastLog(`${p.name} can't afford ${item.emoji}${item.name} (${item.cost}g, has ${p.gold}g).`,'sys');return;}
   p.gold-=item.cost;
   if(!item.consumable){
-    if(item.effect==='atk'){p.atk+=item.val;}else if(item.effect==='def'){p.def+=item.val;}
-    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}! (${item.effect.toUpperCase()} +${item.val})`,'loot');
-  } else {addItemToInv(p,item.id,1);broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}.`,'loot');}
+    addItemToInv(p,item.id,1);
+    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}! Type: equip ${item.id}`,'loot');
+  } else {
+    addItemToInv(p,item.id,1);
+    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}.`,'loot');
+  }
   syncPlayer(pid);
 }
 
 function doFlee(pid,p){
-  const ok=Math.random()<(p.inventory.some(i=>i.id==='boots')?0.9:p.cls==='ranger'?0.75:0.5);
+  const hasBoots=p.equipped?.feet==='boots'||p.inventory.some(i=>i.id==='boots');
+  const ok=Math.random()<(hasBoots?0.9:p.cls==='ranger'?0.75:0.5);
   if(ok){p.status='fled';broadcastLog(`${p.avatar} ${p.name} flees to safety!`,'flee');}
   else{const d=rng(15,40);p.hp=Math.max(0,p.hp-d);broadcastLog(`${p.avatar} ${p.name} tries to flee — hit for ${d}!`,'attack');if(p.hp<=0){p.alive=false;broadcastLog(`☠ ${p.name} dies fleeing.`,'death');}}
   syncPlayer(pid);
@@ -938,8 +976,10 @@ function doCraft(pid,p){
   for(const r of CRAFT_RECIPES){
     if(Object.entries(r.needs).every(([ore,qty])=>p.inventory.find(i=>i.id===ore&&i.qty>=qty))){
       Object.entries(r.needs).forEach(([ore,qty])=>removeFromInv(p,ore,qty));
-      if(r.stat==='atk')p.atk+=r.val; else p.def+=r.val;
-      broadcastLog(`${p.avatar} ${p.name} crafts ${r.gives}! ${r.stat.toUpperCase()} +${r.val}`,'loot');
+      // Find matching item def and add to inventory
+      const craftedItem=ITEMS.find(i=>i.name===r.gives||i.id===r.gives.toLowerCase().replace(/\s/g,''));
+      if(craftedItem){addItemToInv(p,craftedItem.id,1);broadcastLog(`${p.avatar} ${p.name} crafts ${craftedItem.emoji}${r.gives}! Type: equip ${craftedItem.id}`,'loot');}
+      else{broadcastLog(`${p.avatar} ${p.name} crafts ${r.gives}! (${r.stat.toUpperCase()} +${r.val})`,'loot');}
       syncPlayer(pid); return;
     }
   }
@@ -953,20 +993,13 @@ function doScout(pid,p){
   if(bossLvl<9)broadcastLog(`Next boss: ${next.name} (HP:${next.hp}, ATK:${next.atk}).`,'sys');
 }
 
-function doPray(pid,p){
-  if(p.cls==='cleric'){
-    const h=rng(50,90);
-    Object.values(players).filter(q=>q.alive).forEach(q=>{q.hp=Math.min(q.maxHp,q.hp+h);syncPlayer(q.id);});
-    broadcastLog(`✨ ${p.name} channels Holy Light — all heroes +${h} HP!`,'heal');
-  } else {
-    const h=rng(15,35); p.hp=Math.min(p.maxHp,p.hp+h);
-    broadcastLog(`🙏 ${p.name} prays. +${h} HP.`,'heal'); syncPlayer(pid);
-  }
-}
+
 
 function doInventory(pid,p){
-  if(!p.inventory.length){broadcastLog(`${p.name}'s bag is empty. Gold: ${p.gold}g.`,'sys');return;}
-  broadcastLog(`${p.avatar} ${p.name}: ${p.inventory.map(i=>i.id+'×'+i.qty).join(', ')} | Gold: ${p.gold}g | Lv.${p.level} (${p.xp}/${p.xpNeeded} XP)`,'info');
+  const eq=p.equipped||{};
+  const eqStr=['weapon','armor','offhand','feet'].map(s=>{const it=eq[s]?ITEMS.find(i=>i.id===eq[s]):null;return it?`[${it.emoji}${it.name}]`:null;}).filter(Boolean).join(' ');
+  const bagStr=p.inventory.length?p.inventory.map(i=>i.id+'×'+i.qty).join(', '):'(empty)';
+  broadcastLog(`${p.avatar} ${p.name} | Equipped: ${eqStr||'nothing'} | Bag: ${bagStr} | Gold: ${p.gold}g | Lv.${p.level} XP:${p.xp}/${p.xpNeeded}`,'info');
 }
 
 function openGuild(pid,p){
@@ -1052,6 +1085,64 @@ function doSpecial(pid,p){
   syncPlayer(pid);
 }
 
+function doEquip(pid,p,args){
+  if(!args.length){
+    // Show current equipment
+    const eq=p.equipped||{};
+    const slots=['weapon','armor','offhand','feet'];
+    const lines=slots.map(s=>{
+      const it=eq[s]?ITEMS.find(i=>i.id===eq[s]):null;
+      return `${s}: ${it?it.emoji+it.name:'(empty)'}`;
+    }).join('  ·  ');
+    broadcastLog(`${p.avatar} ${p.name} equipped: ${lines}`,'info');
+    return;
+  }
+  const q=args.join(' ');
+  const item=ITEMS.find(i=>i.id===q||i.name.toLowerCase().includes(q));
+  if(!item){broadcastLog(`No item matching "${q}". Check your inv.`,'sys');return;}
+  if(item.consumable){broadcastLog(`${item.emoji}${item.name} is a consumable — use it automatically or just carry it.`,'sys');return;}
+  if(!item.slot){broadcastLog(`${item.emoji}${item.name} has no equipment slot.`,'sys');return;}
+  // Check player has it in inventory
+  const inInv=p.inventory.find(i=>i.id===item.id&&i.qty>0);
+  if(!inInv){broadcastLog(`${p.name} doesn't have ${item.emoji}${item.name} in their bag.`,'sys');return;}
+  // Unequip old item in that slot
+  const oldId=p.equipped[item.slot];
+  if(oldId){
+    const oldItem=ITEMS.find(i=>i.id===oldId);
+    if(oldItem){
+      if(oldItem.effect==='atk')p.atk-=oldItem.val;
+      else if(oldItem.effect==='def')p.def-=oldItem.val;
+      else if(oldItem.effect==='flee'){/* boots passive */}
+      addItemToInv(p,oldId,1);
+      broadcastLog(`${p.name} unequips ${oldItem.emoji}${oldItem.name}.`,'sys');
+    }
+  }
+  // Equip new item
+  p.equipped[item.slot]=item.id;
+  removeFromInv(p,item.id,1);
+  if(item.effect==='atk')p.atk+=item.val;
+  else if(item.effect==='def')p.def+=item.val;
+  // boots: flee bonus is checked dynamically from equipped slot
+  broadcastLog(`${p.avatar} ${p.name} equips ${item.emoji}${item.name}! ${item.effect==='flee'?'Flee chance improved.':`${item.effect.toUpperCase()} ${item.val>0?'+':''}${item.val}`}`,'loot');
+  syncPlayer(pid);
+}
+
+function doUnequip(pid,p,args){
+  if(!args.length){broadcastLog(`Usage: unequip <slot>  (weapon / armor / offhand / feet)`,'sys');return;}
+  const slot=args[0];
+  if(!p.equipped||!p.equipped[slot]){broadcastLog(`Nothing equipped in "${slot}".`,'sys');return;}
+  const oldId=p.equipped[slot];
+  const oldItem=ITEMS.find(i=>i.id===oldId);
+  if(oldItem){
+    if(oldItem.effect==='atk')p.atk-=oldItem.val;
+    else if(oldItem.effect==='def')p.def-=oldItem.val;
+    addItemToInv(p,oldId,1);
+    p.equipped[slot]=null;
+    broadcastLog(`${p.avatar} ${p.name} removes ${oldItem.emoji}${oldItem.name} → back in bag.`,'sys');
+  }
+  syncPlayer(pid);
+}
+
 function doRevive(pid,p){
   const ash=p.inventory.find(i=>i.id==='revive'&&i.qty>0);
   if(!ash){broadcastLog(`${p.name} has no Phoenix Ash. Buy at shop.`,'sys');return;}
@@ -1068,7 +1159,7 @@ function doHelp(pid,p){
   broadcastLog('attack / special — fight the boss (special has 30s cooldown)','info');
   broadcastLog('farm / mine / train / dungeon / inn — AUTO MODE (runs continuously, type "stop" to cancel)','mode');
   broadcastLog('shop [item] — buy gear. craft — forge from mined ore.','info');
-  broadcastLog('flee — try to escape. pray — heal (cleric heals party). scout — spy on boss.','info');
+  broadcastLog('flee — try to escape (boots/ranger improve odds). scout — spy on boss stats.','info');
   broadcastLog('guild — change class (costs gold). inv — check your bag.','info');
   broadcastLog('revive — use Phoenix Ash on dead ally.','info');
 }
