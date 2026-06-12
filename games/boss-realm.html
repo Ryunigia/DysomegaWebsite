@@ -84,7 +84,7 @@ input[type=text]::placeholder{color:var(--text3)}
 #boss-timer-label{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
 
 /* MINIMAP */
-#minimap-wrap{flex:0 0 200px;border-left:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:4px;background:var(--bg3)}
+#minimap-wrap{flex:0 0 260px;border-left:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:4px;background:var(--bg3)}
 #minimap-title{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:2px}
 #minimap-canvas{width:100%;flex:1;border-radius:6px;border:1px solid var(--border);background:var(--bg);image-rendering:pixelated}
 
@@ -184,7 +184,7 @@ input[type=text]::placeholder{color:var(--text3)}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
 @media(max-width:600px){
-  #minimap-wrap{flex:0 0 130px}
+  #minimap-wrap{flex:0 0 160px}
   #players-panel{flex:0 0 140px}
 }
 </style>
@@ -250,7 +250,7 @@ input[type=text]::placeholder{color:var(--text3)}
     </div>
     <div id="minimap-wrap">
       <div id="minimap-title">World Map</div>
-      <canvas id="minimap-canvas" width="184" height="130"></canvas>
+      <canvas id="minimap-canvas" width="244" height="170"></canvas>
     </div>
   </div>
 
@@ -349,21 +349,21 @@ function randomAnimalName(){
   return a+b;
 }
 const CRAFT_RECIPES=[
-  {needs:{iron:2},  gives:'Iron Sword',   stat:'atk',val:20},
-  {needs:{stone:3}, gives:'Stone Buckler',stat:'def',val:9},
-  {needs:{gold:2},  gives:'Gold Charm',   stat:'def',val:15},
-  {needs:{mithril:1,iron:1},gives:'Mithril Edge',stat:'atk',val:45},
+  {needs:{iron:2},  gives:'Iron Sword',   itemId:'sword',    stat:'atk',val:20},
+  {needs:{stone:3}, gives:'Stone Buckler',itemId:'shield',   stat:'def',val:9},
+  {needs:{gold:2},  gives:'Gold Charm',   itemId:'chainmail',stat:'def',val:15},
+  {needs:{mithril:1,iron:1},gives:'Mithril Edge',itemId:'mageblade',stat:'atk',val:45},
 ];
 
 // Zone layout for minimap
 const ZONES={
-  arena:  {x:75, y:5,  w:60,h:40, color:'#3a1010',label:'⚔ Arena',   labelY:20},
-  village:{x:5,  y:55, w:50,h:35, color:'#1a2a1a',label:'🏘 Village', labelY:75},
-  farm:   {x:65, y:55, w:45,h:35, color:'#1a2a10',label:'🌾 Farm',    labelY:75},
-  mine:   {x:120,y:55, w:50,h:35, color:'#1a1a2a',label:'⛏ Mine',    labelY:75},
-  inn:    {x:5,  y:98, w:45,h:28, color:'#2a1a10',label:'🏠 Inn',     labelY:115},
-  dungeon:{x:60, y:98, w:55,h:28, color:'#100a20',label:'🏚 Dungeon', labelY:115},
-  guild:  {x:125,y:98, w:50,h:28, color:'#20100a',label:'⚜ Guild',   labelY:115},
+  arena:  {x:82, y:5,  w:80, h:52, color:'#3a1010',label:'⚔ Arena',   labelY:26},
+  village:{x:4,  y:65, w:66, h:46, color:'#1a2a1a',label:'🏘 Village', labelY:88},
+  farm:   {x:78, y:65, w:60, h:46, color:'#1a2a10',label:'🌾 Farm',    labelY:88},
+  mine:   {x:146,y:65, w:94, h:46, color:'#1a1a2a',label:'⛏ Mine',    labelY:88},
+  inn:    {x:4,  y:119,w:60, h:47, color:'#2a1a10',label:'🏠 Inn',     labelY:143},
+  dungeon:{x:72, y:119,w:80, h:47, color:'#100a20',label:'🏚 Dungeon', labelY:143},
+  guild:  {x:160,y:119,w:80, h:47, color:'#20100a',label:'⚜ Guild',   labelY:143},
 };
 // Map mode name → zone key
 const MODE_ZONE={
@@ -545,13 +545,28 @@ function handleMsg(msg,fromConn){
       addLog('You start as a Villager. Visit the Guild to choose a class.','sys');
       break;
     case 'player_join': players[msg.id]=msg.player;addLog(`${msg.player.name} joined!`,'info');renderPlayers();break;
-    case 'player_update': if(msg.id!==myId)players[msg.id]=msg.player;renderPlayers();break;
+    case 'player_update':
+      if(msg.id===myId){
+        // Host is authoritative — accept all fields except _conn
+        const prev=players[myId]||{};
+        players[myId]={...msg.player,_conn:prev._conn};
+      } else {
+        players[msg.id]=msg.player;
+      }
+      renderPlayers();break;
     case 'log': addLog(msg.text,msg.cls);break;
     case 'boss_update': bossHP=msg.hp;bossEnraged=msg.enraged||false;updateBossHP();break;
     case 'boss_attack':
-      bossHP=msg.bossHP;bossEnraged=msg.enraged||false;
-      msg.damages.forEach(({id,dmg})=>{if(players[id]){players[id].hp=Math.max(0,players[id].hp-dmg);if(players[id].hp===0)players[id].alive=false;}});
-      updateBossHP();renderPlayers();break;
+      bossHP=msg.bossHP; bossEnraged=msg.enraged||false;
+      // Apply damage locally for immediate feedback (host also sends player_update per player)
+      if(msg.damages){
+        msg.damages.forEach(({id,dmg})=>{
+          if(!players[id])return;
+          players[id].hp=Math.max(0,players[id].hp-dmg);
+          if(players[id].hp===0)players[id].alive=false;
+        });
+      }
+      updateBossHP(); renderPlayers(); break;
     case 'timer': timerSec=msg.sec;updateTimer(msg.sec,false);break;
     case 'grace_tick': graceSec=msg.sec;updateTimer(msg.sec,true);break;
     case 'next_level': bossLvl=msg.lvl;bossHP=msg.hp;bossMaxHP=msg.hp;bossEnraged=false;updateBossUI();break;
@@ -715,6 +730,7 @@ function doBossAttack(){
       broadcastLog(`${b.e} ${b.name} ${bossEnraged?'RAGES at':'strikes'} ${p.name} for ${dmg}!`,'attack');
       if(!p.alive)broadcastLog(`☠ ${p.name} has fallen!`,'death');
       else tryAutoConsume(p,true);
+      syncPlayer(id); // push authoritative HP to all clients
     }
   });
   renderPlayers();checkWipeout();
@@ -762,7 +778,7 @@ function startAutoModeLoop(){
         groups[s].push(p.avatar+p.name);
       });
       const parts=Object.entries(groups)
-        .filter(([m])=>m!=='idle'||Object.keys(groups).length===1)
+        .filter(([m])=>m!=='idle'&&m!=='revived')
         .map(([m,n])=>`${emo[m]||'●'}${m}: ${n.join(', ')}`);
       if(parts.length)broadcastLog('≫ '+parts.join('  ·  '),'mode');
     }
@@ -939,7 +955,7 @@ function doAttack(pid,p){
     if(p.hp<=0){p.alive=false;cMsg+=` ☠ ${p.name} falls!`;}
     broadcastLog(cMsg,'attack');
     tryAutoConsume(p,true);
-    syncPlayer(pid);
+    syncPlayer(pid); // push updated HP to all clients
     if(!p.alive)checkWipeout();
   }
 }
@@ -954,11 +970,10 @@ function doShop(pid,p,args){
   if(!item){broadcastLog(`No item matching "${q}".`,'sys');return;}
   if(p.gold<item.cost){broadcastLog(`${p.name} can't afford ${item.emoji}${item.name} (${item.cost}g, has ${p.gold}g).`,'sys');return;}
   p.gold-=item.cost;
-  if(!item.consumable){
-    addItemToInv(p,item.id,1);
-    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}! Type: equip ${item.id}`,'loot');
+  addItemToInv(p,item.id,1);
+  if(item.slot){
+    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}! (in bag — type: equip ${item.id} to wear it)`,'loot');
   } else {
-    addItemToInv(p,item.id,1);
     broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}.`,'loot');
   }
   syncPlayer(pid);
@@ -977,8 +992,8 @@ function doCraft(pid,p){
     if(Object.entries(r.needs).every(([ore,qty])=>p.inventory.find(i=>i.id===ore&&i.qty>=qty))){
       Object.entries(r.needs).forEach(([ore,qty])=>removeFromInv(p,ore,qty));
       // Find matching item def and add to inventory
-      const craftedItem=ITEMS.find(i=>i.name===r.gives||i.id===r.gives.toLowerCase().replace(/\s/g,''));
-      if(craftedItem){addItemToInv(p,craftedItem.id,1);broadcastLog(`${p.avatar} ${p.name} crafts ${craftedItem.emoji}${r.gives}! Type: equip ${craftedItem.id}`,'loot');}
+      const craftedItem=ITEMS.find(i=>i.id===r.itemId);
+      if(craftedItem){addItemToInv(p,craftedItem.id,1);broadcastLog(`${p.avatar} ${p.name} crafts ${craftedItem.emoji}${r.gives}! → type: equip ${craftedItem.id}`,'loot');}
       else{broadcastLog(`${p.avatar} ${p.name} crafts ${r.gives}! (${r.stat.toUpperCase()} +${r.val})`,'loot');}
       syncPlayer(pid); return;
     }
@@ -997,9 +1012,19 @@ function doScout(pid,p){
 
 function doInventory(pid,p){
   const eq=p.equipped||{};
-  const eqStr=['weapon','armor','offhand','feet'].map(s=>{const it=eq[s]?ITEMS.find(i=>i.id===eq[s]):null;return it?`[${it.emoji}${it.name}]`:null;}).filter(Boolean).join(' ');
-  const bagStr=p.inventory.length?p.inventory.map(i=>i.id+'×'+i.qty).join(', '):'(empty)';
-  broadcastLog(`${p.avatar} ${p.name} | Equipped: ${eqStr||'nothing'} | Bag: ${bagStr} | Gold: ${p.gold}g | Lv.${p.level} XP:${p.xp}/${p.xpNeeded}`,'info');
+  const eqParts=['weapon','armor','offhand','feet'].map(s=>{
+    const it=eq[s]?ITEMS.find(i=>i.id===eq[s]):null;
+    return s+': '+(it?it.emoji+it.name:'—');
+  });
+  broadcastLog(`${p.avatar} ${p.name} Lv.${p.level} | Gold: ${p.gold}g | XP: ${p.xp}/${p.xpNeeded} | ATK: ${p.atk} DEF: ${p.def}`,'info');
+  broadcastLog('  Equipped — '+eqParts.join('  ·  '),'info');
+  const gear=p.inventory.filter(i=>ITEMS.find(x=>x.id===i.id&&x.slot));
+  const cons=p.inventory.filter(i=>ITEMS.find(x=>x.id===i.id&&x.consumable));
+  const ore=p.inventory.filter(i=>!ITEMS.find(x=>x.id===i.id));
+  if(gear.length)broadcastLog('  Gear (equippable) — '+gear.map(i=>{const x=ITEMS.find(d=>d.id===i.id);return (x?x.emoji:'')+i.id+'×'+i.qty;}).join(', ')+'  → equip <name>','loot');
+  if(cons.length)broadcastLog('  Consumables (auto) — '+cons.map(i=>i.id+'×'+i.qty).join(', '),'heal');
+  if(ore.length)broadcastLog('  Ore — '+ore.map(i=>i.id+'×'+i.qty).join(', ')+'  → craft','sys');
+  if(!p.inventory.length)broadcastLog('  Bag is empty.','sys');
 }
 
 function openGuild(pid,p){
@@ -1102,9 +1127,11 @@ function doEquip(pid,p,args){
   if(!item){broadcastLog(`No item matching "${q}". Check your inv.`,'sys');return;}
   if(item.consumable){broadcastLog(`${item.emoji}${item.name} is a consumable — use it automatically or just carry it.`,'sys');return;}
   if(!item.slot){broadcastLog(`${item.emoji}${item.name} has no equipment slot.`,'sys');return;}
+  // Ensure equipped map exists
+  if(!p.equipped)p.equipped={weapon:null,armor:null,offhand:null,feet:null};
   // Check player has it in inventory
   const inInv=p.inventory.find(i=>i.id===item.id&&i.qty>0);
-  if(!inInv){broadcastLog(`${p.name} doesn't have ${item.emoji}${item.name} in their bag.`,'sys');return;}
+  if(!inInv){broadcastLog(`${p.name} doesn't have ${item.emoji}${item.name} in their bag. Buy from shop first.`,'sys');return;}
   // Unequip old item in that slot
   const oldId=p.equipped[item.slot];
   if(oldId){
@@ -1156,12 +1183,12 @@ function doRevive(pid,p){
 
 function doHelp(pid,p){
   broadcastLog('━━ Commands ━━','sep');
-  broadcastLog('attack / special — fight the boss (special has 30s cooldown)','info');
-  broadcastLog('farm / mine / train / dungeon / inn — AUTO MODE (runs continuously, type "stop" to cancel)','mode');
-  broadcastLog('shop [item] — buy gear. craft — forge from mined ore.','info');
-  broadcastLog('flee — try to escape (boots/ranger improve odds). scout — spy on boss stats.','info');
-  broadcastLog('guild — change class (costs gold). inv — check your bag.','info');
-  broadcastLog('revive — use Phoenix Ash on dead ally.','info');
+  broadcastLog('attack / special — fight the boss (special: 30s cooldown)','info');
+  broadcastLog('farm / mine / train / dungeon / inn — AUTO MODE (type "stop" to cancel)','mode');
+  broadcastLog('shop [item] — buy gear (lands in bag)  |  equip [item] — wear it','info');
+  broadcastLog('craft — forge ore into gear  |  unequip [slot] — remove weapon/armor/offhand/feet','info');
+  broadcastLog('flee — escape  |  scout — spy boss  |  guild — change class  |  inv — full status','info');
+  broadcastLog('revive — use Phoenix Ash on dead ally','info');
 }
 
 // ═══════════════════════════════════════════
