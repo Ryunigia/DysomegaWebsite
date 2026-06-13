@@ -370,7 +370,10 @@ input[type=text]::placeholder{color:var(--text3)}
     <img src="../images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega">
     <span>DYSOMEGA</span>
   </a>
-  <a class="nav-back" href="../index.html#play">← All Games</a>
+  <div style="display:flex;align-items:center;gap:12px">
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;border:1px solid var(--border);padding:2px 7px;border-radius:2px">v0.1</span>
+    <a class="nav-back" href="../index.html#play">← All Games</a>
+  </div>
 </nav>
 
 <div id="game-area">
@@ -1005,29 +1008,27 @@ function startAutoModeLoop(){
       }
     });
 
-    // Every 5s: one line per active player combining mode + results
+    // Every 5s: one broadcastLog call, grouped by mode, one line per mode
     if(tick>=5){
       tick=0;
-      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠',fighting:'⚔️',attacking:'⚔️',fled:'🏃',smithing:'⚒'};
-      const lines=[];
-
+      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠',fighting:'⚔️',fled:'🏃',smithing:'⚒'};
+      const skip=new Set(['idle','revived','fighting','attacking']);
+      // Group players by mode
+      const byMode={};
       Object.values(players).filter(p=>p.alive).forEach(p=>{
         const s=p.status||'idle';
-        if(s==='idle'||s==='revived'||s==='fighting'||s==='attacking')return;
-        const modeTag=`${emo[s]||''}[${s}]`;
-        const pid=p.id;
-        const results=pending[pid]?.parts||[];
-        delete pending[pid];
-        // One line: avatar name [mode]: result1 · result2 (or just "active" if no tick fired yet)
-        const resultStr=results.length?results.join(' · '):'active';
-        lines.push({text:`${p.avatar} ${p.name} ${modeTag}: ${resultStr}`,cls:'mode'});
+        if(skip.has(s))return;
+        if(!byMode[s])byMode[s]=[];
+        const results=(pending[p.id]?.parts||[]).join(', ')||'active';
+        delete pending[p.id];
+        byMode[s].push(`${p.avatar}${p.name}: ${results}`);
       });
-      // Clear any leftover pending for players who changed mode mid-window
       Object.keys(pending).forEach(k=>delete pending[k]);
-
-      if(lines.length){
-        lines.forEach(l=>broadcastLog(l.text,l.cls));
-      }
+      if(!Object.keys(byMode).length)return;
+      // Build one multi-line string, one line per mode
+      const block=Object.entries(byMode)
+        .map(([m,entries])=>`${emo[m]||''}[${m}]: ${entries.join('  —  ')}`);
+      block.forEach(line=>broadcastLog(line,'mode'));
     }
   },1000);
 }
@@ -1638,12 +1639,20 @@ function broadcastLog(text,cls){addLog(text,cls);if(isHost&&!isSolo)broadcast({t
 
 function addLog(text,cls='sys'){
   const log=document.getElementById('log');
-  const d=document.createElement('div');
-  d.className='log-line '+(cls||'sys');
-  if(cls==='sep'){d.textContent=text;log.appendChild(d);log.scrollTop=log.scrollHeight;return;}
   const now=new Date();
-  d.innerHTML=`<span class="log-time">${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}</span>${cls==='ai'?'<span class="log-ai-tag">AI</span>':''}${escHtml(text)}`;
-  log.appendChild(d);log.scrollTop=log.scrollHeight;
+  const ts=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+  // Support multi-line messages — first line gets timestamp, rest are indented
+  const lines=String(text).split('\n');
+  lines.forEach((line,i)=>{
+    if(!line.trim())return;
+    const d=document.createElement('div');
+    d.className='log-line '+(cls||'sys');
+    if(cls==='sep'){d.textContent=line;}
+    else if(i===0){d.innerHTML=`<span class="log-time">${ts}</span>${cls==='ai'?'<span class="log-ai-tag">AI</span>':''}${escHtml(line)}`;}
+    else{d.innerHTML=`<span class="log-time" style="opacity:0"> ${ts}</span>${escHtml(line)}`;}
+    log.appendChild(d);
+  });
+  log.scrollTop=log.scrollHeight;
 }
 function escHtml(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 
