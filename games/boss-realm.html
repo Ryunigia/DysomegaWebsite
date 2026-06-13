@@ -1,11 +1,106 @@
 <!DOCTYPE html>
+<!--
+  Boss Realm — Dysomega
+  games/boss-realm.html
+-->
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Boss Realm</title>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
-<style>
+  <meta charset="UTF-8">
+  <title>Boss Realm — Dysomega</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link rel="icon" href="../images/DysomegaLogo_V2_32_Alpha.png" type="image/png" sizes="32x32">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/peerjs/1.5.2/peerjs.min.js"></script>
+  <style>
+    /* ── Dysomega template base ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #08090d; --bg2: #0f1118; --bg3: #161a23; --bg4: #1c2130;
+      --accent: #d4a017; --accent2: #f0bc2e; --accent3: #7a5a00; --accent4: #3a2a00;
+      --accent-glow: rgba(212,160,23,0.08);
+      --red: #c0392b; --red2: #e74c3c; --red3: #ff6b5b;
+      --green: #27ae60; --green2: #2ecc71;
+      --blue: #2980b9; --blue2: #3498db;
+      --purple: #8e44ad; --purple2: #9b59b6;
+      --teal: #16a085; --teal2: #1abc9c;
+      --text: #ccc7bb; --text-muted: #7a7268; --text-dim: #4a4840;
+      --border: #242834; --border2: #2e3545;
+      --border-accent: rgba(212,160,23,0.3);
+      /* aliases so game CSS keeps working */
+      --amber: var(--accent); --amber2: var(--accent2);
+      --amber3: var(--accent3); --amber4: var(--accent4);
+      --text2: var(--text-muted); --text3: var(--text-dim);
+      --font-mono: 'Share Tech Mono', monospace;
+      --font-sans: 'Syne', sans-serif;
+      --nav-h: 52px;
+      --banner-h: 56px;
+    }
+    html { scroll-behavior: smooth; }
+
+    /* Layout shell */
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-sans);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      padding-bottom: var(--banner-h);
+    }
+
+    /* NAV */
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 1.5rem; height: var(--nav-h);
+      background: rgba(8,9,13,0.97);
+      border-bottom: 1px solid var(--border2);
+      flex-shrink: 0; z-index: 50; position: relative;
+    }
+    .nav-logo { display: flex; align-items: center; gap: 10px; text-decoration: none; }
+    .nav-logo img { width: 24px; image-rendering: pixelated; }
+    .nav-logo span { font-family: var(--font-mono); font-size: 14px; color: var(--accent); letter-spacing: 0.15em; }
+    .nav-back { display: flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text-muted); font-size: 12px; font-weight: 600; letter-spacing: 0.08em; transition: color 0.2s; }
+    .nav-back:hover { color: var(--accent); }
+
+    /* Game area fills space between nav and banner */
+    #game-area {
+      flex: 1 1 0;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      min-height: 0;
+    }
+    /* Lobby inside game-area can scroll */
+    #game-area > #lobby { overflow-y: auto; }
+
+    /* BANNER */
+    .banner-ad {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      height: var(--banner-h);
+      background: var(--bg2);
+      border-top: 1px solid var(--border-accent);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 200; gap: 1.5rem;
+    }
+    .banner-content { display: flex; align-items: center; gap: 1rem; font-size: 13px; }
+    .banner-label { font-family: var(--font-mono); font-size: 10px; color: var(--text-dim); letter-spacing: 0.15em; text-transform: uppercase; border: 1px solid var(--border); padding: 2px 7px; border-radius: 2px; flex-shrink: 0; }
+    .banner-text { color: var(--text-muted); font-size: 13px; }
+    .banner-text b { color: var(--text); }
+    .banner-cta { display: inline-block; padding: 6px 16px; background: var(--accent); color: #0b0b0f; font-family: var(--font-sans); font-size: 12px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; text-decoration: none; border-radius: 2px; transition: background 0.2s; flex-shrink: 0; }
+    .banner-cta:hover { background: var(--accent2); }
+    .banner-close { position: absolute; right: 1rem; background: none; border: none; cursor: pointer; color: var(--text-dim); font-size: 18px; line-height: 1; padding: 4px 6px; transition: color 0.2s; }
+    .banner-close:hover { color: var(--text); }
+
+    @media (max-width: 700px) {
+      nav { padding: 0 1rem; }
+      .banner-text { display: none; }
+    }
+
+    /* ── Game styles ── */
+
 :root{
   --bg:#08090d;--bg2:#0f1118;--bg3:#161a23;--bg4:#1c2130;
   --amber:#d4a017;--amber2:#f0bc2e;--amber3:#7a5a00;--amber4:#3a2a00;
@@ -22,7 +117,7 @@
 body{background:var(--bg);color:var(--text);height:100vh;display:flex;flex-direction:column;overflow:hidden}
 
 /* LOBBY */
-#lobby{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:16px;padding:20px;overflow-y:auto}
+#lobby{display:flex;flex-direction:column;align-items:center;justify-content:flex-start;min-height:0;flex:1 1 0;gap:14px;padding:16px;overflow-y:auto}
 .lobby-title{font-size:2.5rem;font-weight:800;letter-spacing:.05em;color:var(--amber2);text-shadow:0 0 60px #d4a01740}
 .lobby-sub{color:var(--text2);font-size:.88rem;max-width:440px;text-align:center;line-height:1.6}
 .lobby-box{background:var(--bg3);border:1px solid var(--border2);border-radius:12px;padding:22px 26px;display:flex;flex-direction:column;gap:11px;width:100%;max-width:400px}
@@ -48,10 +143,10 @@ input[type=text]::placeholder{color:var(--text3)}
 .solo-note{font-size:.7rem;color:var(--text3);text-align:center;line-height:1.4}
 
 /* GAME */
-#game{display:none;flex-direction:column;height:100vh}
+#game{display:none;flex-direction:column;height:100%;flex:1 1 0;min-height:0}
 
 /* TOP BAR: arena + minimap side by side */
-#top-bar{display:flex;align-items:stretch;background:var(--bg2);border-bottom:2px solid var(--border2);flex-shrink:0}
+#top-bar{display:flex;align-items:stretch;background:var(--bg2);border-bottom:2px solid var(--border2);flex-shrink:0;position:relative}
 #arena{flex:1;padding:9px 13px;position:relative;transition:border-color .4s}
 #arena.rage{border-bottom:2px solid var(--red)!important}
 .arena-header{display:flex;align-items:center;gap:8px;margin-bottom:6px}
@@ -84,12 +179,17 @@ input[type=text]::placeholder{color:var(--text3)}
 #boss-timer-label{font-size:.58rem;color:var(--text3);text-transform:uppercase;letter-spacing:.07em}
 
 /* MINIMAP */
-#minimap-wrap{flex:0 0 260px;border-left:1px solid var(--border);padding:8px;display:flex;flex-direction:column;gap:4px;background:var(--bg3)}
-#minimap-title{font-size:.62rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);margin-bottom:2px}
-#minimap-canvas{width:100%;flex:1;border-radius:6px;border:1px solid var(--border);background:var(--bg);image-rendering:pixelated}
+/* WORLD MAP right panel */
+#game-cols{display:flex;flex:1 1 0;min-height:0;overflow:hidden}
+#game-left{display:flex;flex-direction:column;flex:1 1 0;min-width:0;overflow:hidden}
+#worldmap-panel{flex:0 0 280px;background:var(--bg3);border-left:2px solid var(--border2);display:flex;flex-direction:column;padding:10px;gap:6px;overflow:hidden}
+#worldmap-title{font-size:.7rem;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);font-weight:700;flex-shrink:0}
+#worldmap-canvas{flex:1;border-radius:8px;border:1px solid var(--border2);background:var(--bg);image-rendering:pixelated;width:100%}
+@media(max-width:900px){#worldmap-panel{flex:0 0 200px}}
+@media(max-width:600px){#worldmap-panel{display:none}}
 
 /* MAIN AREA */
-#main-area{display:flex;flex:1 1 0;overflow:hidden;min-height:0}
+#main-area{display:flex;flex:1 1 0;overflow:hidden;min-height:0;}
 
 /* Players panel */
 #players-panel{flex:0 0 185px;background:var(--bg3);border-right:1px solid var(--border);overflow-y:auto;padding:7px}
@@ -156,7 +256,7 @@ input[type=text]::placeholder{color:var(--text3)}
 #cmd-send:hover{background:var(--amber2)}
 
 /* Guild modal */
-#guild-modal{display:none;position:fixed;inset:0;background:#000000cc;z-index:200;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
+#guild-modal{display:none;position:fixed;inset:0;background:#000000cc;z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
 #guild-modal.show{display:flex}
 .guild-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 32px;max-width:480px;width:90%}
 .guild-box h2{color:var(--amber2);font-size:1.2rem;font-weight:800;margin-bottom:6px}
@@ -183,14 +283,97 @@ input[type=text]::placeholder{color:var(--text3)}
 ::-webkit-scrollbar{width:3px}
 ::-webkit-scrollbar-thumb{background:var(--border2);border-radius:2px}
 
-@media(max-width:600px){
-  #minimap-wrap{flex:0 0 160px}
-  #players-panel{flex:0 0 140px}
+/* ── MOBILE / PHONE ── */
+@media(max-width:700px){
+  /* Stack layout vertically on phone */
+  #game{flex-direction:column}
+  #game-cols{flex-direction:column}
+  #game-left{min-height:0;flex:1 1 0}
+
+  /* Hide worldmap on small screens — replaced by compact status bar */
+  #worldmap-panel{display:none}
+
+  /* Boss area smaller */
+  #top-bar{flex-direction:column}
+  #arena{padding:6px 8px}
+  #boss-sprite{font-size:2rem}
+  .boss-name{font-size:.9rem}
+  #boss-timer{font-size:1.4rem}
+
+  /* Players panel: horizontal strip at top of main-area */
+  #main-area{flex-direction:column}
+  #players-panel{
+    flex:0 0 auto;
+    max-height:110px;
+    overflow-x:auto;
+    overflow-y:hidden;
+    display:flex;
+    flex-direction:row;
+    gap:6px;
+    border-right:none;
+    border-bottom:1px solid var(--border);
+    padding:6px;
+    width:100%;
+  }
+  #players-panel h3{display:none}
+  .player-card{
+    flex:0 0 130px;
+    margin-bottom:0;
+    min-width:120px;
+  }
+  .pc-stats{gap:3px}
+  .pc-stat{font-size:.55rem}
+
+  /* Log takes rest */
+  #log-wrap{flex:1 1 0;min-height:0}
+  #log{padding:5px 8px}
+  .log-line{font-size:.75rem}
+
+  /* Compact cmd area */
+  #cmd-area{padding:5px 8px}
+  #cmd-hints{gap:3px;margin-bottom:4px}
+  .hchip{font-size:.6rem;padding:2px 5px}
+  #cmd-input{font-size:.82rem;padding:7px 10px}
+  #cmd-send{padding:7px 12px;font-size:.82rem}
+
+  /* Phase dots smaller */
+  .phase-dot{width:6px;height:6px}
+
+  /* Grace banner smaller */
+  #grace-banner{font-size:.62rem}
 }
-</style>
+
+@media(max-width:400px){
+  .lobby-box{padding:16px 14px}
+  .lobby-title{font-size:2rem}
+  #players-panel{max-height:90px}
+  .player-card{flex:0 0 110px;min-width:105px}
+}
+
+    /* Override: game fills #game-area not full viewport */
+    #lobby {
+      min-height: 0;
+      flex: 1 1 0;
+      overflow-y: auto;
+    }
+    #game {
+      height: 100%;
+      flex: 1 1 0;
+      min-height: 0;
+    }
+  </style>
 </head>
 <body>
 
+<nav>
+  <a class="nav-logo" href="../index.html">
+    <img src="../images/DysomegaLogo_V2_64_Alpha.png" alt="Dysomega">
+    <span>DYSOMEGA</span>
+  </a>
+  <a class="nav-back" href="../index.html#play">← All Games</a>
+</nav>
+
+<div id="game-area">
 <!-- LOBBY -->
 <div id="lobby">
   <div class="lobby-title">⚔ Boss Realm</div>
@@ -221,6 +404,8 @@ input[type=text]::placeholder{color:var(--text3)}
 
 <!-- GAME -->
 <div id="game">
+<div id="game-cols">
+<div id="game-left">
   <!-- TOP BAR -->
   <div id="top-bar">
     <div id="arena">
@@ -248,10 +433,7 @@ input[type=text]::placeholder{color:var(--text3)}
         <div id="boss-timer-label">grace</div>
       </div>
     </div>
-    <div id="minimap-wrap">
-      <div id="minimap-title">World Map</div>
-      <canvas id="minimap-canvas" width="244" height="170"></canvas>
-    </div>
+
   </div>
 
   <!-- MAIN -->
@@ -265,12 +447,21 @@ input[type=text]::placeholder{color:var(--text3)}
       <div id="cmd-area">
         <div id="cmd-hints"></div>
         <div id="cmd-row">
-          <input type="text" id="cmd-input" placeholder="What do you do? (attack, farm, mine, train, guild…)" autocomplete="off" spellcheck="false">
+          <input type="text" id="cmd-input" placeholder="What do you do? (attack, farm, mine, smith, guild…)" autocomplete="off" spellcheck="false">
           <button id="cmd-send">Act</button>
         </div>
       </div>
     </div>
   </div>
+</div><!-- /game-left -->
+
+<!-- WORLD MAP PANEL -->
+<div id="worldmap-panel">
+  <div id="worldmap-title">🗺 World</div>
+  <canvas id="worldmap-canvas"></canvas>
+</div>
+
+</div><!-- /game-cols -->
 </div>
 
 <!-- GUILD MODAL -->
@@ -292,8 +483,24 @@ input[type=text]::placeholder{color:var(--text3)}
     <button class="btn btn-amber" id="overlay-btn" style="width:100%">Try Again</button>
   </div>
 </div>
+</div>
+
+<!-- BANNER -->
+<div class="banner-ad" id="bannerAd">
+  <div class="banner-content">
+    <span class="banner-label">From Dysomega</span>
+    <span class="banner-text">Working on <b>Chuture</b> — 2D survival crafting on a time-travelling train.</span>
+    <a href="https://dysomega.itch.io/chuture" class="banner-cta" target="_blank">Check it out →</a>
+  </div>
+  <button class="banner-close" id="bannerClose" aria-label="Close">×</button>
+</div>
 
 <script>
+document.getElementById('bannerClose').addEventListener('click', () => {
+  document.getElementById('bannerAd').style.display = 'none';
+  document.body.style.paddingBottom = '0';
+});
+
 // ═══════════════════════════════════════════
 //  DATA
 // ═══════════════════════════════════════════
@@ -323,21 +530,14 @@ const BOSSES=[
 ];
 
 const ITEMS=[
-  {id:'sword',    name:'Iron Sword',  cost:80,  effect:'atk',val:15,emoji:'⚔️',slot:'weapon'},
-  {id:'steel',    name:'Steel Blade', cost:200, effect:'atk',val:35,emoji:'🗡️',slot:'weapon'},
-  {id:'mageblade',name:'Mageblade',   cost:380, effect:'atk',val:60,emoji:'🌟',slot:'weapon',rare:true},
-  {id:'shield',   name:'Buckler',     cost:65,  effect:'def',val:10,emoji:'🛡️',slot:'offhand'},
-  {id:'chainmail',name:'Chainmail',   cost:160, effect:'def',val:28,emoji:'🪖',slot:'armor'},
-  {id:'platemail',name:'Plate',       cost:350, effect:'def',val:55,emoji:'⛨', slot:'armor',rare:true},
-  {id:'potion',   name:'Potion',      cost:55,  effect:'heal',val:80,emoji:'🧪',consumable:true},
-  {id:'elixir',   name:'Elixir',      cost:220, effect:'heal',val:220,emoji:'💎',consumable:true,rare:true},
-  {id:'food',     name:'Rations',     cost:18,  effect:'heal',val:35,emoji:'🍞',consumable:true},
-  {id:'boots',    name:'Speed Boots', cost:130, effect:'flee',val:1, emoji:'👟',slot:'feet'},
-  {id:'tome',     name:'Spell Tome',  cost:320, effect:'atk',val:55,emoji:'📖',slot:'weapon'},
-  {id:'revive',   name:'Phoenix Ash', cost:400, effect:'revive',val:1,emoji:'🪶',consumable:true,rare:true},
+  {id:'potion',   name:'Potion',      cost:55,  effect:'heal', val:80,  emoji:'🧪',consumable:true},
+  {id:'elixir',   name:'Elixir',      cost:220, effect:'heal', val:220, emoji:'💎',consumable:true,rare:true},
+  {id:'food',     name:'Rations',     cost:18,  effect:'heal', val:35,  emoji:'🍞',consumable:true},
+  {id:'revive',   name:'Phoenix Ash', cost:400, effect:'revive',val:1,  emoji:'🪶',consumable:true,rare:true},
 ];
+const SELL_PRICES={stone:3,iron:8,gold:18,mithril:60,wood:2};
 
-const ORES=['stone','stone','stone','iron','iron','gold','mithril'];
+const ORES=['wood','wood','stone','stone','stone','iron','iron','gold','mithril'];
 const ANIMALS=['Panda','Snake','Tiger','Wolf','Eagle','Shark','Fox','Bear','Hawk','Lynx',
   'Cobra','Raven','Otter','Viper','Moose','Bison','Crane','Hyena','Zebra','Rhino',
   'Gecko','Falcon','Bison','Stoat','Dingo','Tapir','Okapi','Quail','Mamba','Weasel',
@@ -348,29 +548,49 @@ function randomAnimalName(){
   while(b===a)b=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
   return a+b;
 }
-const CRAFT_RECIPES=[
-  {needs:{iron:2},  gives:'Iron Sword',   itemId:'sword',    stat:'atk',val:20},
-  {needs:{stone:3}, gives:'Stone Buckler',itemId:'shield',   stat:'def',val:9},
-  {needs:{gold:2},  gives:'Gold Charm',   itemId:'chainmail',stat:'def',val:15},
-  {needs:{mithril:1,iron:1},gives:'Mithril Edge',itemId:'mageblade',stat:'atk',val:45},
+// Smith recipes: {ore, qty, gives, slot, stat, val, emoji}
+const SMITH_RECIPES=[
+  // Swords (weapon slot)
+  {ore:'wood',    qty:3, gives:'Wooden Sword',  slot:'weapon',stat:'atk',val:8,  emoji:'🪵'},
+  {ore:'stone',   qty:3, gives:'Stone Sword',   slot:'weapon',stat:'atk',val:16, emoji:'🪨'},
+  {ore:'iron',    qty:2, gives:'Iron Sword',    slot:'weapon',stat:'atk',val:28, emoji:'⚔️'},
+  {ore:'gold',    qty:2, gives:'Gold Sword',    slot:'weapon',stat:'atk',val:42, emoji:'🟡'},
+  {ore:'mithril', qty:1, gives:'Mithril Sword', slot:'weapon',stat:'atk',val:65, emoji:'💙'},
+  // Shields (offhand)
+  {ore:'wood',    qty:2, gives:'Wooden Shield', slot:'offhand',stat:'def',val:5,  emoji:'🪵'},
+  {ore:'stone',   qty:2, gives:'Stone Shield',  slot:'offhand',stat:'def',val:12, emoji:'🪨'},
+  {ore:'iron',    qty:2, gives:'Iron Shield',   slot:'offhand',stat:'def',val:20, emoji:'🛡️'},
+  {ore:'gold',    qty:1, gives:'Gold Shield',   slot:'offhand',stat:'def',val:32, emoji:'🟡'},
+  {ore:'mithril', qty:1, gives:'Mithril Shield',slot:'offhand',stat:'def',val:50, emoji:'💙'},
+  // Armour (armor slot)
+  {ore:'wood',    qty:4, gives:'Leather Vest',  slot:'armor',  stat:'def',val:6,  emoji:'🪵'},
+  {ore:'stone',   qty:3, gives:'Stone Vest',    slot:'armor',  stat:'def',val:14, emoji:'🪨'},
+  {ore:'iron',    qty:3, gives:'Iron Armour',   slot:'armor',  stat:'def',val:25, emoji:'🪖'},
+  {ore:'gold',    qty:2, gives:'Gold Armour',   slot:'armor',  stat:'def',val:38, emoji:'🟡'},
+  {ore:'mithril', qty:1, gives:'Mithril Plate', slot:'armor',  stat:'def',val:58, emoji:'💙'},
 ];
 
 // Zone layout for minimap
-const ZONES={
-  arena:  {x:82, y:5,  w:80, h:52, color:'#3a1010',label:'⚔ Arena',   labelY:26},
-  village:{x:4,  y:65, w:66, h:46, color:'#1a2a1a',label:'🏘 Village', labelY:88},
-  farm:   {x:78, y:65, w:60, h:46, color:'#1a2a10',label:'🌾 Farm',    labelY:88},
-  mine:   {x:146,y:65, w:94, h:46, color:'#1a1a2a',label:'⛏ Mine',    labelY:88},
-  inn:    {x:4,  y:119,w:60, h:47, color:'#2a1a10',label:'🏠 Inn',     labelY:143},
-  dungeon:{x:72, y:119,w:80, h:47, color:'#100a20',label:'🏚 Dungeon', labelY:143},
-  guild:  {x:160,y:119,w:80, h:47, color:'#20100a',label:'⚜ Guild',   labelY:143},
-};
+// Zones defined as fractions (0..1) so they scale with canvas size
+const ZONE_DEFS=[
+  {key:'arena',   fx:.1, fy:.02,fw:.8, fh:.22,color:'#3a1010',border:'#6a1a1a',label:'⚔ Arena',   dot:'#c0392b'},
+  {key:'village', fx:.02,fy:.28,fw:.3, fh:.22,color:'#1a2a1a',border:'#2a4a2a',label:'🏘 Village', dot:'#27ae60'},
+  {key:'farm',    fx:.35,fy:.28,fw:.3, fh:.22,color:'#1a2a10',border:'#2a4a10',label:'🌾 Farm',    dot:'#a0c030'},
+  {key:'mine',    fx:.68,fy:.28,fw:.3, fh:.22,color:'#1a1a2a',border:'#2a2a4a',label:'⛏ Mine',    dot:'#5555aa'},
+  {key:'inn',     fx:.02,fy:.56,fw:.3, fh:.22,color:'#2a1a10',border:'#4a2a10',label:'🏠 Inn',     dot:'#d4a017'},
+  {key:'dungeon', fx:.35,fy:.56,fw:.3, fh:.22,color:'#100a20',border:'#201040',label:'🏚 Dungeon', dot:'#8e44ad'},
+  {key:'guild',   fx:.68,fy:.56,fw:.3, fh:.22,color:'#20100a',border:'#401808',label:'⚜ Guild',   dot:'#e07820'},
+  {key:'smithy',  fx:.02,fy:.82,fw:.45,fh:.16,color:'#1a1a10',border:'#3a3a20',label:'⚒ Smithy',  dot:'#c8c030'},
+  {key:'fled',    fx:.51,fy:.82,fw:.47,fh:.16,color:'#0a0a0a',border:'#222222',label:'🏃 Fled',    dot:'#555555'},
+];
+const ZONES={};ZONE_DEFS.forEach(z=>ZONES[z.key]=z);
 // Map mode name → zone key
 const MODE_ZONE={
   idle:'village', attacking:'arena', fighting:'arena',
   farming:'farm', mining:'mine', dungeoning:'dungeon',
   resting:'inn', training:'village', shopping:'village',
-  fled:'village', guild:'guild', revived:'village',
+  fled:'fled', guild:'guild', revived:'village',
+  smithing:'smithy', smith:'smithy',
 };
 
 // Auto-mode tick intervals (ms)
@@ -419,7 +639,7 @@ let guildOpenForPid=null;
   });
   // hint chips
   const hc=document.getElementById('cmd-hints');
-  ['attack','special','equip','train','farm','mine','dungeon','shop','inn','flee','scout','craft','guild','inv','commands'].forEach(h=>{
+  ['attack','special','train','farm','mine','dungeon','shop','smith','equip','inn','flee','scout','guild','inv','commands'].forEach(h=>{
     const d=document.createElement('div');
     d.className='hchip'; d.textContent=h; d.dataset.cmd=h;
     d.onclick=()=>{const inp=document.getElementById('cmd-input');inp.value=h;inp.focus();};
@@ -719,7 +939,11 @@ function doBossAttack(){
   const atkPow=bossEnraged?b.rageAtk:b.atk;
   const alive=Object.values(players).filter(p=>p.alive&&p.status!=='fled');
   if(!alive.length){broadcastLog('No heroes to strike.','sys');startBossTimer();return;}
-  const damages=alive.map(p=>({id:p.id,dmg:Math.max(3,atkPow-p.def+rng(-12,14))}));
+  // Boss hits between 1 and all alive players (random subset, weighted toward more targets at higher levels)
+  const minHit=1, maxHit=Math.min(alive.length, 1+Math.floor(Math.random()*(alive.length)));
+  const shuffled=[...alive].sort(()=>Math.random()-.5);
+  const targets=shuffled.slice(0,Math.max(minHit,maxHit));
+  const damages=targets.map(p=>({id:p.id,dmg:Math.max(3,atkPow-p.def+rng(-12,14))}));
   damages.forEach(({id,dmg})=>{
     if(players[id]){players[id].hp=Math.max(0,players[id].hp-dmg);if(players[id].hp===0)players[id].alive=false;}
   });
@@ -750,10 +974,15 @@ function checkWipeout(check=false){
 function startAutoModeLoop(){
   if(autoModeInt)clearInterval(autoModeInt);
   const timers={};
-  let summaryTick=0;
+  let tick=0;
+  // pendingResults: per-player results collected each tick, flushed every 5s
+  const pending={};
+
   autoModeInt=setInterval(()=>{
     if(!isHost)return;
-    summaryTick++;
+    tick++;
+
+    // Run auto-mode actions, collect results silently into pending[]
     Object.values(players).forEach(p=>{
       if(!p.alive)return;
       const cfg=AUTO_MODES[p.status];
@@ -765,63 +994,96 @@ function startAutoModeLoop(){
         timers[p.id].elapsed=0;
         const fns={farming:tickFarm,mining:tickMine,training:tickTrain,dungeoning:tickDungeon,resting:tickInn};
         const fn=fns[p.status];
-        if(fn)fn(p.id,p);
+        if(fn){
+          // Collect result snippet instead of broadcasting immediately
+          const snippet=fn(p.id,p);
+          if(snippet){
+            if(!pending[p.id])pending[p.id]={name:p.name,avatar:p.avatar,parts:[]};
+            pending[p.id].parts.push(snippet);
+          }
+        }
       }
     });
-    if(summaryTick>=5){
-      summaryTick=0;
-      const groups={};
-      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠',fighting:'⚔️',attacking:'⚔️',fled:'🏃',idle:'💤'};
+
+    // Every 5s: one line per active player combining mode + results
+    if(tick>=5){
+      tick=0;
+      const emo={farming:'🌾',mining:'⛏',training:'📚',dungeoning:'🏚',resting:'🏠',fighting:'⚔️',attacking:'⚔️',fled:'🏃',smithing:'⚒'};
+      const lines=[];
+
       Object.values(players).filter(p=>p.alive).forEach(p=>{
         const s=p.status||'idle';
-        if(!groups[s])groups[s]=[];
-        groups[s].push(p.avatar+p.name);
+        if(s==='idle'||s==='revived'||s==='fighting'||s==='attacking')return;
+        const modeTag=`${emo[s]||''}[${s}]`;
+        const pid=p.id;
+        const results=pending[pid]?.parts||[];
+        delete pending[pid];
+        // One line: avatar name [mode]: result1 · result2 (or just "active" if no tick fired yet)
+        const resultStr=results.length?results.join(' · '):'active';
+        lines.push({text:`${p.avatar} ${p.name} ${modeTag}: ${resultStr}`,cls:'mode'});
       });
-      const parts=Object.entries(groups)
-        .filter(([m])=>m!=='idle'&&m!=='revived')
-        .map(([m,n])=>`${emo[m]||'●'}${m}: ${n.join(', ')}`);
-      if(parts.length)broadcastLog('≫ '+parts.join('  ·  '),'mode');
+      // Clear any leftover pending for players who changed mode mid-window
+      Object.keys(pending).forEach(k=>delete pending[k]);
+
+      if(lines.length){
+        lines.forEach(l=>broadcastLog(l.text,l.cls));
+      }
     }
   },1000);
 }
 
-// Auto-mode tick functions (called by host loop)
+// Auto-mode tick functions — return a short result snippet, do NOT broadcastLog themselves
 function tickFarm(pid,p){
   const qty=rng(1,3),gold=rng(5,14);
   p.gold+=gold; addItemToInv(p,'food',qty);
-  broadcastLog(`🌾 ${p.name} farms. +${qty} rations, +${gold}g.`,'loot');
   syncPlayer(pid);
+  return `+${qty} rations, +${gold}g`;
 }
 function tickMine(pid,p){
   const ore=ORES[Math.floor(Math.random()*ORES.length)];
   addItemToInv(p,ore,1);
-  let msg=`⛏ ${p.name} mines. +1× ${ore}.`;
-  if(rng(1,10)===1){const d=rng(5,20);p.hp=Math.max(1,p.hp-d);msg+=` Rockfall! -${d} HP.`;}
-  broadcastLog(msg,'loot'); syncPlayer(pid);
+  let snippet=`+1× ${ore}`;
+  if(rng(1,10)===1){const d=rng(5,20);p.hp=Math.max(1,p.hp-d);snippet+=` (rockfall -${d}HP)`;}
+  syncPlayer(pid);
+  return snippet;
 }
 function tickTrain(pid,p){
-  const cost=20+p.level*15;
-  if(p.gold<cost){broadcastLog(`📚 ${p.name} trains but needs ${cost}g (has ${p.gold}g). Idling.`,'sys');p.status='idle';syncPlayer(pid);return;}
-  p.gold-=cost; const xpGain=15+rng(0,15); p.xp+=xpGain;
-  let msg=`📚 ${p.name} trains. +${xpGain} XP, -${cost}g.`;
-  if(p.xp>=p.xpNeeded){doLevelUp(p);msg+=` ✨ Level up → Lv.${p.level}!`;}
-  broadcastLog(msg,'info'); syncPlayer(pid);
+  const xpGain=4+rng(0,6);
+  p.xp+=xpGain;
+  let snippet=`+${xpGain} XP`;
+  while(p.xp>=p.xpNeeded){doLevelUp(p);snippet+=` ✨Lv.${p.level}!`;}
+  syncPlayer(pid);
+  return snippet;
 }
 function tickDungeon(pid,p){
   const gold=rng(30,80)+bossLvl*10;
   const bonus=p.cls==='rogue'?Math.floor(gold*.4):0;
-  p.gold+=gold+bonus;
-  let msg=`🏚 ${p.name} explores the dungeon. +${gold+(bonus?`+${bonus}(rogue)`:'')}g!`;
-  if(rng(0,1)){const d=rng(15,55);p.hp=Math.max(0,p.hp-d);msg+=` Took ${d} dmg.`;if(p.hp<=0){p.alive=false;msg+=` ☠ Dies in the dark!`;p.status='idle';}}
-  if(rng(1,12)===1){const ri=ITEMS.filter(i=>i.rare)[Math.floor(Math.random()*ITEMS.filter(i=>i.rare).length)];addItemToInv(p,ri.id,1);msg+=` Finds ${ri.emoji}${ri.name}!`;}
-  broadcastLog(msg,'loot'); syncPlayer(pid);
+  const xpGain=8+bossLvl*3+rng(0,6);
+  p.gold+=gold+bonus; p.xp+=xpGain;
+  let snippet=`+${gold+(bonus?`+${bonus}`:'')}g +${xpGain}XP`;
+  while(p.xp>=p.xpNeeded){doLevelUp(p);snippet+=` ✨Lv.${p.level}!`;}
+  if(rng(0,1)){
+    const d=rng(15,55);p.hp=Math.max(0,p.hp-d);
+    snippet+=` (-${d}HP)`;
+    if(p.hp<=0){p.alive=false;snippet+=` ☠ died!`;p.status='idle';
+      broadcastLog(`☠ ${p.name} dies in the dungeon!`,'death');
+    }
+  }
+  if(rng(1,12)===1){
+    const ri=ITEMS.filter(i=>i.rare)[Math.floor(Math.random()*ITEMS.filter(i=>i.rare).length)];
+    addItemToInv(p,ri.id,1);snippet+=` found ${ri.emoji}${ri.name}!`;
+  }
+  syncPlayer(pid);
+  return snippet;
 }
 function tickInn(pid,p){
-  if(p.hp>=p.maxHp){broadcastLog(`🏠 ${p.name} is fully healed. Leaving inn.`,'heal');p.status='idle';syncPlayer(pid);return;}
+  if(p.hp>=p.maxHp){p.status='idle';syncPlayer(pid);return `fully healed, leaving`;}
   const cost=12+bossLvl*4;
-  if(p.gold>=cost){p.gold-=cost;const h=Math.min(p.maxHp-p.hp,40+rng(0,20));p.hp=Math.min(p.maxHp,p.hp+h);broadcastLog(`🏠 ${p.name} rests at inn. +${h} HP (-${cost}g).`,'heal');}
-  else{const h=Math.min(p.maxHp-p.hp,15+rng(0,10));p.hp=Math.min(p.maxHp,p.hp+h);broadcastLog(`🏠 ${p.name} rests cheaply. +${h} HP.`,'heal');}
+  let snippet;
+  if(p.gold>=cost){p.gold-=cost;const h=Math.min(p.maxHp-p.hp,40+rng(0,20));p.hp=Math.min(p.maxHp,p.hp+h);snippet=`+${h}HP (-${cost}g)`;}
+  else{const h=Math.min(p.maxHp-p.hp,15+rng(0,10));p.hp=Math.min(p.maxHp,p.hp+h);snippet=`+${h}HP (free)`;}
   syncPlayer(pid);
+  return snippet;
 }
 
 function doLevelUp(p){
@@ -845,7 +1107,7 @@ const CMD_ALIASES={
   shop:['shop','buy','purchase','store','market'],
   inn:['inn','rest','sleep','recover','tavern','lodge'],
   flee:['flee','run','escape','retreat'],
-  craft:['craft','forge','make','smith'],
+  smith:['smith','craft','forge','make'],
   scout:['scout','spy','check','observe'],
 
   inv:['inv','inventory','bag','gear','items'],
@@ -892,7 +1154,7 @@ function processCommand(pid,tokens,raw){
     case 'special': stopMode(pid,p);doSpecial(pid,p);break;
     case 'shop':    stopMode(pid,p);doShop(pid,p,args);break;
     case 'flee':    stopMode(pid,p);doFlee(pid,p);break;
-    case 'craft':   stopMode(pid,p);doCraft(pid,p);break;
+    case 'smith':   p.status='smithing';syncPlayer(pid);doSmith(pid,p,args);break;
     case 'scout':   doScout(pid,p);break;
 
     case 'inv':     doInventory(pid,p);break;
@@ -962,20 +1224,34 @@ function doAttack(pid,p){
 
 function doShop(pid,p,args){
   if(!args.length){
-    broadcastLog('🛒 Shop: '+ITEMS.map(i=>`${i.emoji}${i.name}(${i.cost}g)`).join(' · '),'info');
-    broadcastLog('Type: shop <item name>','sys'); return;
+    broadcastLog(`🛒 Shop — ${p.name} (${p.gold}g):`,'info');
+    broadcastLog('  Buy: '+ITEMS.map(i=>`${i.emoji}${i.name} ${i.cost}g`).join(' · '),'info');
+    broadcastLog('  Sell: type "shop sell <ore> <qty>"  (stone=3g, iron=8g, gold=18g, mithril=60g, wood=2g/ea)','sys');
+    return;
   }
+  // Sell path
+  if(args[0]==='sell'){
+    const oreId=args[1]; const qty=parseInt(args[2])||1;
+    const price=SELL_PRICES[oreId];
+    if(!price){broadcastLog(`No sell price for "${oreId}". Sellable: stone, iron, gold, mithril, wood.`,'sys');return;}
+    const slot=p.inventory.find(i=>i.id===oreId&&i.qty>=qty);
+    if(!slot){broadcastLog(`${p.name} doesn't have ${qty}× ${oreId}.`,'sys');return;}
+    removeFromInv(p,oreId,qty);
+    const earned=price*qty;
+    p.gold+=earned;
+    broadcastLog(`${p.avatar} ${p.name} sells ${qty}× ${oreId} for ${earned}g.`,'loot');
+    syncPlayer(pid); return;
+  }
+  // Buy path — consumables only
   const q=args.join(' ');
-  const item=ITEMS.find(i=>i.name.toLowerCase().includes(q)||i.id===q);
-  if(!item){broadcastLog(`No item matching "${q}".`,'sys');return;}
+  // Check smithed items first, then shop items
+  const smithedDef=p._smithed&&Object.entries(p._smithed).find(([id])=>id.includes(q)||q.includes(id.replace(/_/g,' ')));
+  const item=smithedDef?{id:smithedDef[0],...smithedDef[1]}:ITEMS.find(i=>i.name.toLowerCase().includes(q)||i.id===q);
+  if(!item){broadcastLog(`No item matching "${q}". Type "shop" to see available items.`,'sys');return;}
   if(p.gold<item.cost){broadcastLog(`${p.name} can't afford ${item.emoji}${item.name} (${item.cost}g, has ${p.gold}g).`,'sys');return;}
   p.gold-=item.cost;
   addItemToInv(p,item.id,1);
-  if(item.slot){
-    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}! (in bag — type: equip ${item.id} to wear it)`,'loot');
-  } else {
-    broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}.`,'loot');
-  }
+  broadcastLog(`${p.avatar} ${p.name} buys ${item.emoji}${item.name}.`,'loot');
   syncPlayer(pid);
 }
 
@@ -987,18 +1263,30 @@ function doFlee(pid,p){
   syncPlayer(pid);
 }
 
-function doCraft(pid,p){
-  for(const r of CRAFT_RECIPES){
-    if(Object.entries(r.needs).every(([ore,qty])=>p.inventory.find(i=>i.id===ore&&i.qty>=qty))){
-      Object.entries(r.needs).forEach(([ore,qty])=>removeFromInv(p,ore,qty));
-      // Find matching item def and add to inventory
-      const craftedItem=ITEMS.find(i=>i.id===r.itemId);
-      if(craftedItem){addItemToInv(p,craftedItem.id,1);broadcastLog(`${p.avatar} ${p.name} crafts ${craftedItem.emoji}${r.gives}! → type: equip ${craftedItem.id}`,'loot');}
-      else{broadcastLog(`${p.avatar} ${p.name} crafts ${r.gives}! (${r.stat.toUpperCase()} +${r.val})`,'loot');}
-      syncPlayer(pid); return;
-    }
+function doSmith(pid,p,args){
+  if(!args||!args.length){
+    broadcastLog(`⚒ ${p.name} at the smithy — recipes:`,'info');
+    ['wood','stone','iron','gold','mithril'].forEach(ore=>{
+      const have=p.inventory.find(i=>i.id===ore);
+      const tier=SMITH_RECIPES.filter(r=>r.ore===ore);
+      broadcastLog(`  ${ore} (have:${have?have.qty:0}) → `+tier.map(r=>`${r.emoji}${r.gives}(x${r.qty}, ${r.stat}+${r.val})`).join(' | '),'sys');
+    });
+    const canMake=SMITH_RECIPES.filter(r=>p.inventory.find(i=>i.id===r.ore&&i.qty>=r.qty));
+    if(canMake.length)broadcastLog(`Can forge now: `+canMake.map(r=>`${r.emoji}${r.gives}`).join(', '),'loot');
+    return;
   }
-  broadcastLog(`${p.name} lacks materials. Mine for ore first. Recipes: 2iron→sword, 3stone→buckler, 2gold→charm, mithril+iron→mithril edge.`,'sys');
+  const q=args.join(' ').toLowerCase();
+  const recipe=SMITH_RECIPES.find(r=>r.gives.toLowerCase().includes(q)||r.ore===q);
+  if(!recipe){broadcastLog(`No recipe for "${q}". Type "smith" to see all.`,'sys');return;}
+  const invSlot=p.inventory.find(i=>i.id===recipe.ore&&i.qty>=recipe.qty);
+  if(!invSlot){broadcastLog(`${p.name} needs ${recipe.qty}x ${recipe.ore} (has ${p.inventory.find(i=>i.id===recipe.ore)?.qty||0}).`,'sys');return;}
+  removeFromInv(p,recipe.ore,recipe.qty);
+  const itemId=recipe.gives.toLowerCase().replace(/\s+/g,'_');
+  addItemToInv(p,itemId,1);
+  if(!p._smithed)p._smithed={};
+  p._smithed[itemId]={slot:recipe.slot,stat:recipe.stat,val:recipe.val,emoji:recipe.emoji,name:recipe.gives};
+  broadcastLog(`${p.avatar} ${p.name} forges ${recipe.emoji}${recipe.gives}! (${recipe.stat.toUpperCase()}+${recipe.val}) → type: equip ${itemId}`,'loot');
+  syncPlayer(pid);
 }
 
 function doScout(pid,p){
@@ -1183,12 +1471,12 @@ function doRevive(pid,p){
 
 function doHelp(pid,p){
   broadcastLog('━━ Commands ━━','sep');
-  broadcastLog('attack / special — fight the boss (special: 30s cooldown)','info');
+  broadcastLog('attack — strike boss  |  special — class ability (30s cd)','info');
   broadcastLog('farm / mine / train / dungeon / inn — AUTO MODE (type "stop" to cancel)','mode');
-  broadcastLog('shop [item] — buy gear (lands in bag)  |  equip [item] — wear it','info');
-  broadcastLog('craft — forge ore into gear  |  unequip [slot] — remove weapon/armor/offhand/feet','info');
-  broadcastLog('flee — escape  |  scout — spy boss  |  guild — change class  |  inv — full status','info');
-  broadcastLog('revive — use Phoenix Ash on dead ally','info');
+  broadcastLog('shop — buy potions/food/revive  |  shop sell <ore> <qty> — sell ore for gold','info');
+  broadcastLog('smith — see forge recipes  |  smith <item name> — forge gear from ore','info');
+  broadcastLog('equip <item>  |  unequip <slot>  |  inv — full status','info');
+  broadcastLog('flee — escape  |  scout — spy boss  |  guild — change class  |  revive — Phoenix Ash','info');
 }
 
 // ═══════════════════════════════════════════
@@ -1270,45 +1558,65 @@ async function callAI(prompt){
 // ═══════════════════════════════════════════
 function startMinimapLoop(){
   if(minimapInt)clearInterval(minimapInt);
-  minimapInt=setInterval(drawMinimap,800);
-  drawMinimap();
+  minimapInt=setInterval(drawWorldMap,900);
+  setTimeout(drawWorldMap,200);
 }
 
-function drawMinimap(){
-  const canvas=document.getElementById('minimap-canvas');
+function drawWorldMap(){
+  const canvas=document.getElementById('worldmap-canvas');
   if(!canvas)return;
+  // Size canvas to its CSS display size
+  const rect=canvas.getBoundingClientRect();
+  const W=Math.max(rect.width||260,100), H=Math.max(rect.height||400,200);
+  if(canvas.width!==W||canvas.height!==H){canvas.width=W;canvas.height=H;}
   const ctx=canvas.getContext('2d');
-  const W=canvas.width, H=canvas.height;
   ctx.clearRect(0,0,W,H);
-  // Background
-  ctx.fillStyle='#08090d';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#06070a';ctx.fillRect(0,0,W,H);
+
   // Draw zones
-  Object.values(ZONES).forEach(z=>{
-    ctx.fillStyle=z.color; ctx.fillRect(z.x,z.y,z.w,z.h);
-    ctx.strokeStyle='#2e3545'; ctx.lineWidth=1; ctx.strokeRect(z.x,z.y,z.w,z.h);
-    ctx.fillStyle='#5a5448'; ctx.font='7px sans-serif'; ctx.textAlign='center';
-    ctx.fillText(z.label,z.x+z.w/2,z.labelY);
-  });
-  // Draw players
-  Object.values(players).forEach((p,i)=>{
-    const zoneName=MODE_ZONE[p.status]||'village';
-    const z=ZONES[zoneName];
-    if(!z)return;
-    // Spread players within zone
-    const count=Object.values(players).filter(q=>(MODE_ZONE[q.status]||'village')===zoneName).length;
-    const idx=Object.values(players).filter(q=>(MODE_ZONE[q.status]||'village')===zoneName&&q.id<=p.id).length-1;
-    const cols=Math.ceil(Math.sqrt(count));
-    const col=idx%cols, row=Math.floor(idx/cols);
-    const px=z.x+8+(col*(z.w-16)/(Math.max(cols,1)));
-    const py=z.y+16+(row*12);
-    // Dot
-    ctx.fillStyle=p.alive?(p.id===myId?'#f0bc2e':'#2ecc71'):'#c0392b';
-    ctx.beginPath();ctx.arc(px,py,4,0,Math.PI*2);ctx.fill();
-    // Name
-    ctx.fillStyle=p.id===myId?'#f0bc2e':'#8a8270';
-    ctx.font=`${p.id===myId?'bold ':''}7px sans-serif`;
+  ZONE_DEFS.forEach(z=>{
+    const x=z.fx*W, y=z.fy*H, w=z.fw*W, h=z.fh*H;
+    // Fill
+    ctx.fillStyle=z.color; ctx.fillRect(x,y,w,h);
+    // Border
+    ctx.strokeStyle=z.border; ctx.lineWidth=1.5; ctx.strokeRect(x,y,w,h);
+    // Zone label
+    ctx.fillStyle='#6a6258'; ctx.font=`bold ${Math.round(W*0.042)}px sans-serif`;
     ctx.textAlign='center';
-    ctx.fillText(p.name.slice(0,6),px,py-6);
+    ctx.fillText(z.label, x+w/2, y+h*0.45);
+  });
+
+  // Draw players
+  const byZone={};
+  Object.values(players).forEach(p=>{
+    const zk=MODE_ZONE[p.status]||'village';
+    if(!byZone[zk])byZone[zk]=[];
+    byZone[zk].push(p);
+  });
+
+  Object.entries(byZone).forEach(([zk,ps])=>{
+    const zd=ZONES[zk]; if(!zd)return;
+    const x=zd.fx*W, y=zd.fy*H, w=zd.fw*W, h=zd.fh*H;
+    const cols=Math.min(ps.length,3);
+    const rowH=Math.min(h*0.4, 26);
+    ps.forEach((p,i)=>{
+      const col=i%cols, row=Math.floor(i/cols);
+      const dotX=x+w*(0.18+col*(0.64/Math.max(cols-1,1)));
+      const dotY=y+h*0.58+row*rowH;
+      // Dot glow
+      ctx.save();
+      const dotCol=p.alive?(p.id===myId?'#f0bc2e':zd.dot):'#c0392b';
+      ctx.shadowColor=dotCol; ctx.shadowBlur=8;
+      ctx.fillStyle=dotCol;
+      ctx.beginPath(); ctx.arc(dotX,dotY,p.id===myId?6:4,0,Math.PI*2); ctx.fill();
+      ctx.restore();
+      // Name label
+      ctx.fillStyle=p.alive?(p.id===myId?'#f0bc2e':'#b0a898'):'#c0392b';
+      ctx.font=`${p.id===myId?'bold ':''} ${Math.round(W*0.038)}px sans-serif`;
+      ctx.textAlign='center';
+      const label=p.name.slice(0,8)+(p.alive?'':' ☠');
+      ctx.fillText(label, dotX, dotY-8);
+    });
   });
 }
 
@@ -1407,6 +1715,7 @@ function resetForRetry(lvl){
 }
 
 renderPlayers();
+window.addEventListener('resize',()=>{if(gameActive)setTimeout(drawWorldMap,50);});
 </script>
 </body>
 </html>
