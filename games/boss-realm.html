@@ -403,7 +403,7 @@ input[type=text]::placeholder{color:var(--text3)}
     <span>DYSOMEGA</span>
   </a>
   <div style="display:flex;align-items:center;gap:12px">
-    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;border:1px solid var(--border);padding:2px 7px;border-radius:2px">v0.2</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;border:1px solid var(--border);padding:2px 7px;border-radius:2px">v0.3</span>
     <a class="nav-back" href="../index.html#play">← All Games</a>
   </div>
 </nav>
@@ -650,7 +650,7 @@ let players={};
 let bossHP=0, bossMaxHP=0, bossLvl=0, timerSec=0, graceSec=0;
 let bossTimerInt=null, graceTimerInt=null, autoModeInt=null, minimapInt=null;
 let bossEnraged=false, graceActive=false, gameActive=false;
-let selectedAvatar=AVATARS[0];
+let selectedAvatar=AVATARS[Math.floor(Math.random()*AVATARS.length)];
 const MAX_PLAYERS=10;
 let guildOpenForPid=null;
 
@@ -671,7 +671,7 @@ let guildOpenForPid=null;
   const ar=document.getElementById('avatar-row');
   AVATARS.forEach((a,i)=>{
     const b=document.createElement('button');
-    b.className='av-btn'+(i===0?' sel':'');
+    b.className='av-btn'+(a===selectedAvatar?' sel':'');
     b.textContent=a;
     b.onclick=()=>{selectedAvatar=a;ar.querySelectorAll('.av-btn').forEach(x=>x.classList.remove('sel'));b.classList.add('sel');};
     ar.appendChild(b);
@@ -703,6 +703,16 @@ function buildGuildGrid(){
 document.getElementById('room-input').addEventListener('input',e=>{
   e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
 });
+// Auto-fill room code from URL: ?room=XXXX or ?r=XXXX
+(()=>{
+  const params=new URLSearchParams(window.location.search);
+  const code=(params.get('room')||params.get('r')||'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+  if(code){
+    const inp=document.getElementById('room-input');
+    inp.value=code;
+    setStatus(`Room code "${code}" loaded from link — click Join to enter!`,'var(--amber)');
+  }
+})();
 function setStatus(m,c='var(--text2)'){const e=document.getElementById('lobby-status');e.textContent=m;e.style.color=c;}
 
 // ═══════════════════════════════════════════
@@ -741,8 +751,24 @@ function initPeer(name,code){
       roomId=id.replace('BR-','');
       const rd=document.getElementById('room-display');
       rd.style.display='block'; rd.textContent=roomId;
-      rd.onclick=()=>{navigator.clipboard?.writeText(roomId);const t=rd.textContent;rd.textContent='Copied!';setTimeout(()=>rd.textContent=t,1200);};
-      setStatus('Room ready — share code above!','var(--amber)');
+      rd.onclick=()=>{navigator.clipboard?.writeText(roomId);const t=rd.textContent;rd.textContent='✓ Code copied!';setTimeout(()=>rd.textContent=t,1500);};
+      // Build and show invite link button
+      const inviteUrl=window.location.href.split('?')[0]+'?room='+roomId;
+      let lb=document.getElementById('invite-link-btn');
+      if(!lb){
+        lb=document.createElement('button');
+        lb.id='invite-link-btn';
+        lb.className='btn btn-ghost';
+        lb.style.cssText='width:100%;font-size:.8rem;margin-top:4px';
+        rd.parentNode.insertBefore(lb,rd.nextSibling);
+      }
+      lb.textContent='🔗 Copy Invite Link';
+      lb.onclick=()=>{
+        navigator.clipboard?.writeText(inviteUrl);
+        lb.textContent='✓ Invite link copied!';
+        setTimeout(()=>lb.textContent='🔗 Copy Invite Link',1800);
+      };
+      setStatus('Room ready — share code or invite link!','var(--amber)');
       players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
       startGame();
     } else {
