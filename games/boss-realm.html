@@ -1,12 +1,12 @@
 <!DOCTYPE html>
 <!--
-  Boss Realm — Dysomega
+  COMMAND RPG — Dysomega
   games/boss-realm.html
 -->
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Boss Realm — Dysomega</title>
+  <title>Command RPG — Dysomega</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -411,7 +411,7 @@ input[type=text]::placeholder{color:var(--text3)}
 <div id="game-area">
 <!-- LOBBY -->
 <div id="lobby">
-  <div class="lobby-title">⚔ Boss Realm</div>
+  <div class="lobby-title">Command RPG</div>
   <p class="lobby-sub">A co-op chat-command RPG. Type commands to act. Survive the boss — together or alone.</p>
 
   <div class="lobby-box">
@@ -577,9 +577,9 @@ const ITEMS=[
 const SELL_PRICES={stone:3,iron:8,gold:18,mithril:60,wood:2};
 
 const ORES=['wood','wood','stone','stone','stone','iron','iron','gold','mithril'];
-const ANIMALS=['Panda','Snake','Tiger','Wolf','Eagle','Shark','Fox','Bear','Hawk','Lynx',
-  'Cobra','Raven','Otter','Viper','Moose','Bison','Crane','Hyena','Zebra','Rhino',
-  'Gecko','Falcon','Bison','Stoat','Dingo','Tapir','Okapi','Quail','Mamba','Weasel',
+const ANIMALS=['Panda','Snake','Tiger','Wolf','Eagle','Shark','Fox','Bear','Hawk','Lynx', 'Ant',
+  'Cobra','Raven','Otter','Viper','Moose','Dog','Crane','Hyena','Zebra','Rhino', 'Cat', 'Whale',
+  'Gecko','Falcon','Bison','Stoat','Dingo','Tapir','Okapi','Quail','Mamba','Weasel', 'Lizard', 'Spider',
   'Badger','Marten','Ferret','Puffin','Iguana','Kestrel','Ocelot','Wombat','Narwhal','Capybara'];
 function randomAnimalName(){
   const a=ANIMALS[Math.floor(Math.random()*ANIMALS.length)];
