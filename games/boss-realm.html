@@ -164,6 +164,7 @@ input[type=text]::placeholder{color:var(--text3)}
 .rage-tag{background:var(--red);color:#fff;font-size:.58rem;font-weight:800;padding:2px 5px;border-radius:3px;letter-spacing:.06em;text-transform:uppercase;animation:blink .5s ease-in-out infinite alternate;display:none}
 .boss-sub{font-size:.7rem;color:var(--text2);margin-bottom:4px;font-style:italic}
 .hp-bar-wrap{background:var(--bg);border-radius:4px;height:12px;overflow:hidden;border:1px solid var(--border)}
+
 #boss-hp-bar{height:100%;border-radius:3px;transition:width .5s,background .5s;background:linear-gradient(90deg,#8b1a1a,#e74c3c)}
 .hp-label{font-size:.67rem;color:var(--text2);margin-top:2px;display:flex;justify-content:space-between}
 #boss-phase-note{font-size:.66rem;color:var(--red3);margin-top:2px;min-height:12px;font-style:italic}
@@ -216,6 +217,9 @@ input[type=text]::placeholder{color:var(--text3)}
 .pc-stats{display:flex;gap:5px;flex-wrap:wrap}
 .pc-stat{font-size:.6rem;color:var(--text2)}
 .pc-stat b{color:var(--amber);font-weight:600}
+.pc-skills{display:flex;gap:7px;margin-top:3px}
+.pc-skill{font-size:.62rem;color:var(--text2)}
+.pc-skill b{color:var(--teal2);font-weight:700}
 
 /* Log */
 #log-wrap{flex:1 1 0;display:flex;flex-direction:column;min-width:0;overflow:hidden}
@@ -255,21 +259,7 @@ input[type=text]::placeholder{color:var(--text3)}
 #cmd-send{background:var(--amber);color:#120e00;border:none;border-radius:7px;padding:8px 15px;font-weight:700;cursor:pointer;font-size:.86rem;transition:all .14s}
 #cmd-send:hover{background:var(--amber2)}
 
-/* Guild modal */
-#guild-modal{display:none;position:fixed;inset:0;background:#000000cc;z-index:300;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
-#guild-modal.show{display:flex}
-.guild-box{background:var(--bg2);border:1px solid var(--border2);border-radius:14px;padding:28px 32px;max-width:480px;width:90%}
-.guild-box h2{color:var(--amber2);font-size:1.2rem;font-weight:800;margin-bottom:6px}
-.guild-box p{color:var(--text2);font-size:.82rem;margin-bottom:16px;line-height:1.6}
-.class-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}
-.class-btn{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;cursor:pointer;transition:all .15s;text-align:left}
-.class-btn:hover{border-color:var(--amber3)}
-.class-btn.current{border-color:var(--amber);background:var(--amber4)}
-.class-btn .cn{font-size:.82rem;font-weight:700}
-.class-btn .cd{font-size:.66rem;color:var(--text3);margin-top:2px;line-height:1.3}
-.class-btn .cc{font-size:.68rem;color:var(--amber);margin-top:3px}
-#guild-close{width:100%;background:transparent;border:1px solid var(--border2);color:var(--text2);border-radius:7px;padding:9px;cursor:pointer;font-size:.85rem;transition:all .14s}
-#guild-close:hover{border-color:var(--red);color:var(--red2)}
+/* Guild: chat-only, no modal */
 
 /* Overlay */
 #overlay{display:none;position:fixed;inset:0;background:#000000bb;z-index:100;align-items:center;justify-content:center;backdrop-filter:blur(4px)}
@@ -432,7 +422,9 @@ input[type=text]::placeholder{color:var(--text3)}
     <input type="text" id="room-input" placeholder="Room code — leave empty to host" maxlength="12" style="text-transform:uppercase;letter-spacing:.05em">
     <button class="btn btn-amber" id="join-btn">🌐 Join / Host Online</button>
     <div id="room-display"></div>
+    <button id="invite-link-btn" class="btn btn-ghost" style="display:none;width:100%;font-size:.8rem">🔗 Copy Invite Link</button>
     <div id="lobby-status"></div>
+    <button id="skip-countdown-btn" class="btn btn-amber" style="display:none;width:100%">▶ Start Now</button>
     <div class="solo-note">Solo runs entirely in your browser — no server needed.<br>For multiplayer, share the room code with friends.</div>
   </div>
 </div>
@@ -501,16 +493,6 @@ input[type=text]::placeholder{color:var(--text3)}
 </div>
 
 </div><!-- /game-cols -->
-</div>
-
-<!-- GUILD MODAL -->
-<div id="guild-modal">
-  <div class="guild-box">
-    <h2>⚜ Adventurers Guild</h2>
-    <p id="guild-desc">Choose a class to change profession. Each has unique stats and a special ability. One change per visit — costs gold.</p>
-    <div class="class-grid" id="guild-class-grid"></div>
-    <button id="guild-close">✕ Leave Guild</button>
-  </div>
 </div>
 
 <!-- OVERLAY -->
@@ -609,6 +591,24 @@ const SMITH_RECIPES=[
   {ore:'mithril', qty:1, gives:'Mithril Plate', slot:'armor',  stat:'def',val:58, emoji:'💙'},
 ];
 
+// Skill XP thresholds per level (same curve for farm/mine/dung)
+const SKILL_XP=[0,30,70,120,180,250,330,420,520,630]; // index = current level, value = xp needed
+function gainSkillXp(p, skill, xpAmt){
+  // skill: 'farm'|'mine'|'dung'
+  const lvlKey=skill+'Lvl', xpKey=skill+'Xp';
+  if(p[lvlKey]>=10)return ''; // maxed
+  p[xpKey]=(p[xpKey]||0)+xpAmt;
+  const needed=SKILL_XP[p[lvlKey]]||999;
+  if(p[xpKey]>=needed){
+    p[xpKey]-=needed;
+    p[lvlKey]++;
+    return ` ✦${skill[0].toUpperCase()}Lv${p[lvlKey]}!`;
+  }
+  return '';
+}
+// Scale factor: level 5 = 1.0x, level 1 = 0.4x, level 10 = 2.0x
+function skillScale(lvl){return 0.2+lvl*0.16;}
+
 // Zone layout for minimap
 // Zones defined as fractions (0..1) so they scale with canvas size
 const ZONE_DEFS=[
@@ -648,11 +648,12 @@ let peer=null, connections=[], isHost=false, roomId='', myId='';
 let isSolo=false;
 let players={};
 let bossHP=0, bossMaxHP=0, bossLvl=0, timerSec=0, graceSec=0;
-let bossTimerInt=null, graceTimerInt=null, autoModeInt=null, minimapInt=null;
+let bossTimerInt=null, graceTimerInt=null, autoModeInt=null, minimapInt=null, angerTimerInt=null;
 let bossEnraged=false, graceActive=false, gameActive=false;
+let bossAnger=0; // 0-100: how long boss hasn't been hit. Raises damage permanently.
+let lastHitTime=0; // timestamp of last player attack on boss
 let selectedAvatar=AVATARS[Math.floor(Math.random()*AVATARS.length)];
 const MAX_PLAYERS=10;
-let guildOpenForPid=null;
 
 // ═══════════════════════════════════════════
 //  LOBBY BUILD
@@ -685,20 +686,8 @@ let guildOpenForPid=null;
     hc.appendChild(d);
   });
   // guild class grid
-  buildGuildGrid();
 })();
 
-function buildGuildGrid(){
-  const grid=document.getElementById('guild-class-grid');
-  grid.innerHTML='';
-  CLASSES.forEach(c=>{
-    const d=document.createElement('div');
-    d.className='class-btn';
-    d.innerHTML=`<div class="cn">${c.emoji} ${c.name}</div><div class="cd">${c.desc}</div><div class="cd" style="color:var(--purple2);margin-top:2px">✦ ${c.specialDesc}</div><div class="cc">${c.cost===0?'Free':'Cost: '+c.cost+'g'}</div>`;
-    d.onclick=()=>doClassChange(c.id);
-    grid.appendChild(d);
-  });
-}
 
 document.getElementById('room-input').addEventListener('input',e=>{
   e.target.value=e.target.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
@@ -754,23 +743,26 @@ function initPeer(name,code){
       rd.onclick=()=>{navigator.clipboard?.writeText(roomId);const t=rd.textContent;rd.textContent='✓ Code copied!';setTimeout(()=>rd.textContent=t,1500);};
       // Build and show invite link button
       const inviteUrl=window.location.href.split('?')[0]+'?room='+roomId;
-      let lb=document.getElementById('invite-link-btn');
-      if(!lb){
-        lb=document.createElement('button');
-        lb.id='invite-link-btn';
-        lb.className='btn btn-ghost';
-        lb.style.cssText='width:100%;font-size:.8rem;margin-top:4px';
-        rd.parentNode.insertBefore(lb,rd.nextSibling);
-      }
+      const lb=document.getElementById('invite-link-btn');
+      lb.style.display='block';
       lb.textContent='🔗 Copy Invite Link';
       lb.onclick=()=>{
         navigator.clipboard?.writeText(inviteUrl);
         lb.textContent='✓ Invite link copied!';
         setTimeout(()=>lb.textContent='🔗 Copy Invite Link',1800);
       };
-      setStatus('Room ready — share code or invite link!','var(--amber)');
+      setStatus('Room ready — share code or invite link! Starting in 5s…','var(--amber)');
       players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
-      startGame();
+      // Give host time to copy the invite link before game starts
+      let countdown=5;
+      const cdInt=setInterval(()=>{
+        countdown--;
+        if(countdown>0){setStatus(`Room ready — share code or invite link! Starting in ${countdown}s…`,'var(--amber)');}
+        else{clearInterval(cdInt);startGame();}
+      },1000);
+      // Allow skipping countdown
+      document.getElementById('skip-countdown-btn').style.display='block';
+      document.getElementById('skip-countdown-btn').onclick=()=>{clearInterval(cdInt);startGame();};
     } else {
       roomId=code; isSolo=false;
       players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
@@ -812,7 +804,7 @@ function handleMsg(msg,fromConn){
       if(Object.keys(players).length>=MAX_PLAYERS)return;
       players[msg.id]=mkPlayer(msg.id,msg.name,msg.avatar,'villager');
       players[msg.id]._conn=fromConn;
-      fromConn?.send({type:'state',players:serPlayers(),bossHP,bossMaxHP,bossLvl,timerSec,graceSec,graceActive,gameActive,bossEnraged});
+      fromConn?.send({type:'state',players:serPlayers(),bossHP,bossMaxHP,bossLvl,timerSec,graceSec,graceActive,gameActive,bossEnraged,bossAnger});
       broadcast({type:'player_join',id:msg.id,player:cleanP(players[msg.id])},fromConn);
       broadcastLog(`${msg.name} the Villager entered the realm!`,'info');
       renderPlayers(); break;
@@ -820,7 +812,7 @@ function handleMsg(msg,fromConn){
       Object.entries(msg.players).forEach(([id,p])=>{if(id!==myId)players[id]=p;});
       bossHP=msg.bossHP;bossMaxHP=msg.bossMaxHP;bossLvl=msg.bossLvl;
       timerSec=msg.timerSec;graceSec=msg.graceSec;graceActive=msg.graceActive;
-      gameActive=true;bossEnraged=msg.bossEnraged;
+      gameActive=true;bossEnraged=msg.bossEnraged;bossAnger=msg.bossAnger||0;
       document.getElementById('lobby').style.display='none';
       document.getElementById('game').style.display='flex';
       document.getElementById('room-code-display').textContent='Room: '+roomId;
@@ -842,6 +834,7 @@ function handleMsg(msg,fromConn){
       renderPlayers();break;
     case 'log': addLog(msg.text,msg.cls);break;
     case 'boss_update': bossHP=msg.hp;bossEnraged=msg.enraged||false;updateBossHP();break;
+    case 'anger_update': bossAnger=msg.anger;updateAngerUI();break;
     case 'boss_attack':
       bossHP=msg.bossHP; bossEnraged=msg.enraged||false;
       // Apply damage locally for immediate feedback (host also sends player_update per player)
@@ -876,7 +869,10 @@ function mkPlayer(id,name,avatar,clsId){
     gold:50, xp:0, level:1, xpNeeded:60,
     inventory:[], equipped:{weapon:null,armor:null,offhand:null,feet:null},
     status:'idle', alive:true,
-    kills:0, totalDmg:0
+    kills:0, totalDmg:0,
+    farmLvl:1, farmXp:0,
+    mineLvl:1, mineXp:0,
+    dungLvl:1, dungXp:0
   };
 }
 
@@ -886,7 +882,19 @@ function mkPlayer(id,name,avatar,clsId){
 function startGame(){
   document.getElementById('lobby').style.display='none';
   document.getElementById('game').style.display='flex';
-  document.getElementById('room-code-display').textContent=isSolo?'Solo Mode':'Room: '+roomId;
+  const rcd=document.getElementById('room-code-display');
+  rcd.innerHTML=isSolo?'Solo Mode':`Room: <b style="color:var(--amber)">${roomId}</b>`;
+  if(isHost&&!isSolo){
+    const il=document.createElement('button');
+    il.textContent='🔗 Invite';
+    il.style.cssText='background:none;border:1px solid var(--amber3);color:var(--amber);border-radius:4px;padding:1px 7px;font-size:.65rem;cursor:pointer;margin-left:8px;font-family:inherit;font-weight:700';
+    il.onclick=()=>{
+      const url=window.location.href.split('?')[0]+'?room='+roomId;
+      navigator.clipboard?.writeText(url);
+      il.textContent='✓ Copied!';setTimeout(()=>il.textContent='🔗 Invite',1800);
+    };
+    rcd.appendChild(il);
+  }
   gameActive=true;
   if(isHost)loadBoss(0);
   startAutoModeLoop();
@@ -902,7 +910,7 @@ function startGame(){
 //  BOSS LOAD & UI
 // ═══════════════════════════════════════════
 function loadBoss(lvl){
-  bossLvl=lvl; bossEnraged=false;
+  bossLvl=lvl; bossEnraged=false; bossAnger=0; lastHitTime=Date.now();
   const b=BOSSES[lvl]; bossMaxHP=b.hp; bossHP=b.hp;
   updateBossUI();
   broadcastLog(`━━ LEVEL ${lvl+1} ━━  ${b.e} ${b.name} awakens!`,'attack');
@@ -945,6 +953,28 @@ function startBossTimer(){
     updateTimer(timerSec,false);
     if(timerSec<=0){clearInterval(bossTimerInt);doBossAttack();}
   },1000);
+  startAngerTimer();
+}
+
+function startAngerTimer(){
+  if(angerTimerInt)clearInterval(angerTimerInt);
+  if(!isHost)return;
+  angerTimerInt=setInterval(()=>{
+    if(!gameActive||bossHP<=0||graceActive)return;
+    const secondsSinceHit=(Date.now()-lastHitTime)/1000;
+    if(secondsSinceHit<25)return; // recently hit, no anger
+    const prev=bossAnger;
+    const angerRate=bossLvl<=2?0.8:bossLvl<=5?1.2:bossLvl<=8?1.8:2.5; // early bosses barely get angry
+    bossAnger=Math.min(100,bossAnger+angerRate);
+    // Announce anger thresholds
+    const b=BOSSES[bossLvl];
+    if(prev<25&&bossAnger>=25)broadcastLog(`😤 ${b.name} is getting impatient... (+damage)`, 'rage');
+    else if(prev<50&&bossAnger>=50)broadcastLog(`😠 ${b.name} is FURIOUS at being ignored! (++damage)`, 'rage');
+    else if(prev<75&&bossAnger>=75)broadcastLog(`🤬 ${b.name} SCREAMS with rage! Hit them! (+++damage)`, 'rage');
+    else if(prev<100&&bossAnger>=100)broadcastLog(`💀 ${b.name} loses all reason — HITS EVERYONE! (MAX ANGER)`, 'rage');
+    broadcast({type:'anger_update',anger:bossAnger});
+    updateAngerUI();
+  },1000);
 }
 
 function updateTimer(s,grace){
@@ -972,6 +1002,7 @@ function updateBossUI(){
   });
 }
 
+function updateAngerUI(){} // anger is secret — no bar shown
 function updateBossHP(){
   const pct=Math.max(0,bossHP/bossMaxHP*100);
   const bar=document.getElementById('boss-hp-bar');
@@ -1005,11 +1036,19 @@ function doBossAttack(){
   const atkPow=bossEnraged?b.rageAtk:b.atk;
   const alive=Object.values(players).filter(p=>p.alive&&p.status!=='fled');
   if(!alive.length){broadcastLog('No heroes to strike.','sys');startBossTimer();return;}
-  // Boss hits between 1 and all alive players (random subset, weighted toward more targets at higher levels)
-  const minHit=1, maxHit=Math.min(alive.length, 1+Math.floor(Math.random()*(alive.length)));
-  const shuffled=[...alive].sort(()=>Math.random()-.5);
-  const targets=shuffled.slice(0,Math.max(minHit,maxHit));
-  const damages=targets.map(p=>({id:p.id,dmg:Math.max(3,atkPow-p.def+rng(-12,14))}));
+  // Anger permanently boosts damage (each 25 anger = +15% damage)
+  const angerMult=1+Math.floor(bossAnger/25)*0.15;
+  const finalAtk=Math.round(atkPow*angerMult);
+  // At max anger (100) boss hits EVERYONE, otherwise random subset
+  let targets;
+  if(bossAnger>=100){
+    targets=alive; // hits all
+    broadcastLog(`💀 ${b.name} attacks EVERYONE in a blind rage!`,'rage');
+  } else {
+    const maxHit=Math.min(alive.length,1+Math.floor(Math.random()*alive.length));
+    targets=[...alive].sort(()=>Math.random()-.5).slice(0,maxHit);
+  }
+  const damages=targets.map(p=>({id:p.id,dmg:Math.max(3,finalAtk-p.def+rng(-12,14))}));
   damages.forEach(({id,dmg})=>{
     if(players[id]){players[id].hp=Math.max(0,players[id].hp-dmg);if(players[id].hp===0)players[id].alive=false;}
   });
@@ -1098,16 +1137,27 @@ function startAutoModeLoop(){
 
 // Auto-mode tick functions — return a short result snippet, do NOT broadcastLog themselves
 function tickFarm(pid,p){
-  const qty=rng(1,3),gold=rng(5,14);
+  const scale=skillScale(p.farmLvl||1);
+  const qty=Math.round(rng(0,3)*scale);
+  const gold=Math.round(rng(5,14)*scale);
   p.gold+=gold; addItemToInv(p,'food',qty);
+  const lvlUp=gainSkillXp(p,'farm',8);
   syncPlayer(pid);
-  return `+${qty} rations, +${gold}g`;
+  return `+${qty} rations, +${gold}g (Farm Lv${p.farmLvl||1})${lvlUp}`;
 }
 function tickMine(pid,p){
-  const ore=ORES[Math.floor(Math.random()*ORES.length)];
-  addItemToInv(p,ore,1);
-  let snippet=`+1× ${ore}`;
+  const scale=skillScale(p.mineLvl||1);
+  // Higher mine level = better ore chances
+  const orePool=p.mineLvl>=8?['iron','iron','gold','gold','mithril']:
+                p.mineLvl>=5?['stone','iron','iron','gold','mithril']:
+                ['wood','wood','stone','stone','stone','iron'];
+  const ore=orePool[Math.floor(Math.random()*orePool.length)];
+  const qty=ore==='stone'||ore==='wood'?Math.max(1,Math.round(rng(1,3)*scale)):1;
+  addItemToInv(p,ore,qty);
+  let snippet=`+${qty}× ${ore} (Mine Lv${p.mineLvl||1})`;
   if(rng(1,10)===1){const d=rng(5,20);p.hp=Math.max(1,p.hp-d);snippet+=` (rockfall -${d}HP)`;}
+  const lvlUp=gainSkillXp(p,'mine',10);
+  if(lvlUp)snippet+=lvlUp;
   syncPlayer(pid);
   return snippet;
 }
@@ -1120,23 +1170,30 @@ function tickTrain(pid,p){
   return snippet;
 }
 function tickDungeon(pid,p){
-  const gold=rng(30,80)+bossLvl*10;
+  const scale=skillScale(p.dungLvl||1);
+  const gold=Math.round((rng(30,80)+bossLvl*10)*scale);
   const bonus=p.cls==='rogue'?Math.floor(gold*.4):0;
-  const xpGain=8+bossLvl*3+rng(0,6);
+  const xpGain=Math.round((8+bossLvl*3+rng(0,6))*scale);
   p.gold+=gold+bonus; p.xp+=xpGain;
-  let snippet=`+${gold+(bonus?`+${bonus}`:'')}g +${xpGain}XP`;
+  let snippet=`+${gold+(bonus?`+${bonus}`:'')}g +${xpGain}XP (Dung Lv${p.dungLvl||1})`;
   while(p.xp>=p.xpNeeded){doLevelUp(p);snippet+=` ✨Lv.${p.level}!`;}
-  if(rng(0,1)){
-    const d=rng(15,55);p.hp=Math.max(0,p.hp-d);
+  // Lower dung level = higher damage risk; higher level = lower chance of trouble
+  const riskChance=Math.max(0.05,0.5-p.dungLvl*0.04);
+  if(Math.random()<riskChance){
+    const d=rng(10,Math.max(20,55-p.dungLvl*3));p.hp=Math.max(0,p.hp-d);
     snippet+=` (-${d}HP)`;
     if(p.hp<=0){p.alive=false;snippet+=` ☠ died!`;p.status='idle';
       broadcastLog(`☠ ${p.name} dies in the dungeon!`,'death');
     }
   }
-  if(rng(1,12)===1){
+  // Higher dung level = better rare chance
+  const rareChance=Math.max(2,12-p.dungLvl);
+  if(rng(1,rareChance)===1){
     const ri=ITEMS.filter(i=>i.rare)[Math.floor(Math.random()*ITEMS.filter(i=>i.rare).length)];
     addItemToInv(p,ri.id,1);snippet+=` found ${ri.emoji}${ri.name}!`;
   }
+  const lvlUp=gainSkillXp(p,'dung',12);
+  if(lvlUp)snippet+=lvlUp;
   syncPlayer(pid);
   return snippet;
 }
@@ -1175,7 +1232,7 @@ const CMD_ALIASES={
   scout:['scout','spy','check','observe'],
 
   inv:['inv','inventory','bag','gear','items'],
-  guild:['guild','class','change class','profession'],
+  guild:['guild','class','join guild','profession','change'],
   special:['special','ability','skill','ultimate'],
   equip:['equip','wear','wield','put on','use'],
   unequip:['unequip','remove','take off'],
@@ -1219,10 +1276,21 @@ function processCommand(pid,tokens,raw){
     case 'shop':    stopMode(pid,p);doShop(pid,p,args);break;
     case 'flee':    stopMode(pid,p);doFlee(pid,p);break;
     case 'smith':   p.status='smithing';syncPlayer(pid);doSmith(pid,p,args);break;
+    case 'use':     doUse(pid,p,args);break;
     case 'scout':   doScout(pid,p);break;
 
     case 'inv':     doInventory(pid,p);break;
-    case 'guild':   openGuild(pid,p);break;
+    case 'guild':
+      if(args.length){
+        // guild warrior / guild mage etc — direct class change
+        const clsQuery=args.join(' ').toLowerCase();
+        const targetCls=CLASSES.find(c=>c.id.includes(clsQuery)||c.name.toLowerCase().includes(clsQuery));
+        if(targetCls)sendToHost({type:'command',pid,tokens:['classchange',targetCls.id],raw:'classchange '+targetCls.id});
+        else broadcastLog(`Unknown class "${args.join(' ')}". Type "guild" to see all classes.`,'sys');
+      } else {
+        openGuild(pid,p);
+      }
+      break;
     case 'equip':   doEquip(pid,p,args);break;
     case 'unequip': doUnequip(pid,p,args);break;
     case 'revive':  doRevive(pid,p);break;
@@ -1269,6 +1337,15 @@ function doAttack(pid,p){
   let lvlMsg='';
   while(p.xp>=p.xpNeeded){doLevelUp(p);lvlMsg+=` ✨Lv.${p.level}!`;}
   broadcastLog(`${p.avatar} ${p.name} strikes ${b.name} for ${dmg} dmg! (+${xpGain} XP${lvlMsg})`,'action');
+  // Hitting the boss reduces anger (but not fully — it accumulates)
+  if(isHost){
+    lastHitTime=Date.now();
+    const prevAnger=bossAnger;
+    bossAnger=Math.max(0,bossAnger-8);
+    if(prevAnger>=100&&bossAnger<100)broadcastLog(`${b.name} refocuses on ${p.name}...`,'sys');
+    broadcast({type:'anger_update',anger:bossAnger});
+    updateAngerUI();
+  }
   broadcast({type:'boss_update',hp:bossHP,enraged:bossEnraged});
   updateBossHP(); p.status='fighting'; syncPlayer(pid);
   if(checkBossDead())return;
@@ -1353,6 +1430,34 @@ function doSmith(pid,p,args){
   syncPlayer(pid);
 }
 
+function doUse(pid,p,args){
+  if(!args.length){
+    const usable=p.inventory.filter(i=>ITEMS.find(x=>x.id===i.id&&x.consumable&&x.effect!=='revive'));
+    if(!usable.length){broadcastLog(`${p.name} has nothing to consume. Buy potions or food at the shop.`,'sys');return;}
+    broadcastLog(`${p.name}'s consumables: `+usable.map(i=>{const x=ITEMS.find(d=>d.id===i.id);return `${x.emoji}${x.name}x${i.qty}`;}).join(', ')+'  — type: use <item>','info');
+    return;
+  }
+  const q=args.join(' ').toLowerCase();
+  const itemDef=ITEMS.find(i=>
+    i.name.toLowerCase().includes(q)||i.id===q||
+    (q==='food'&&i.id==='food')||(q==='rations'&&i.id==='food')||
+    (q==='pot'&&i.id==='potion')||(q==='elix'&&i.id==='elixir')
+  );
+  if(!itemDef||!itemDef.consumable||itemDef.effect==='revive'){
+    broadcastLog(`No usable item matching "${q}". Type "use" to see your consumables.`,'sys');return;
+  }
+  const slot=p.inventory.find(i=>i.id===itemDef.id&&i.qty>0);
+  if(!slot){broadcastLog(`${p.name} has no ${itemDef.emoji}${itemDef.name} left.`,'sys');return;}
+  slot.qty--;
+  if(slot.qty<=0)p.inventory=p.inventory.filter(i=>i.id!==itemDef.id);
+  if(itemDef.effect==='heal'){
+    const before=p.hp;
+    p.hp=Math.min(p.maxHp,p.hp+itemDef.val);
+    broadcastLog(`${p.avatar} ${p.name} uses ${itemDef.emoji}${itemDef.name}. +${p.hp-before} HP (${p.hp}/${p.maxHp}).`,'heal');
+  }
+  syncPlayer(pid);
+}
+
 function doScout(pid,p){
   const b=BOSSES[bossLvl];
   const next=BOSSES[Math.min(bossLvl+1,9)];
@@ -1380,27 +1485,19 @@ function doInventory(pid,p){
 }
 
 function openGuild(pid,p){
-  if(pid!==myId){broadcastLog(`${p.name} visits the guild.`,'info');return;}
-  guildOpenForPid=pid;
-  // Highlight current class
-  document.querySelectorAll('.class-btn').forEach((btn,i)=>{
-    btn.classList.toggle('current',CLASSES[i].id===p.cls);
+  // Show guild info in the log — no modal
+  broadcastLog('⚜ ━━ Adventurers Guild ━━','sep');
+  broadcastLog(`Current class: ${p.clsEmoji} ${p.clsName}  |  Gold: ${p.gold}g`,'info');
+  broadcastLog('To change class type:  guild <classname>  e.g. "guild warrior"','sys');
+  CLASSES.forEach(c=>{
+    const isCurrent=c.id===p.cls;
+    const canAfford=p.gold>=c.cost;
+    const tag=isCurrent?' ◄ current':(!canAfford?` (need ${c.cost}g)`:(c.cost===0?' free':` ${c.cost}g`));
+    broadcastLog(`${c.emoji} ${c.name}${tag} — ${c.desc}  |  Special: ${c.specialDesc}`,'info');
   });
-  document.getElementById('guild-desc').textContent=`Change class for gold. Current: ${p.clsEmoji} ${p.clsName}. You have ${p.gold}g.`;
-  document.getElementById('guild-modal').className='guild-modal show';
 }
-document.getElementById('guild-close').addEventListener('click',()=>{
-  document.getElementById('guild-modal').className='guild-modal';
-  guildOpenForPid=null;
-});
 
-function doClassChange(clsId){
-  const pid=guildOpenForPid; if(!pid)return;
-  // Queue as a command through the normal flow
-  sendToHost({type:'command',pid,tokens:['classchange',clsId],raw:'classchange '+clsId});
-  document.getElementById('guild-modal').className='guild-modal';
-  guildOpenForPid=null;
-}
+
 
 // Handle classchange internally
 const _origProcess=processCommand;
@@ -1540,7 +1637,8 @@ function doHelp(pid,p){
   broadcastLog('shop — buy potions/food/revive  |  shop sell <ore> <qty> — sell ore for gold','info');
   broadcastLog('smith — see forge recipes  |  smith <item name> — forge gear from ore','info');
   broadcastLog('equip <item>  |  unequip <slot>  |  inv — full status','info');
-  broadcastLog('flee — escape  |  scout — spy boss  |  guild — change class  |  revive — Phoenix Ash','info');
+  broadcastLog('use <item> — eat food / drink potion manually  |  guild <class> — change class','info');
+  broadcastLog('flee  |  scout  |  revive — Phoenix Ash on dead ally  |  inv — bag & stats','info');
 }
 
 // ═══════════════════════════════════════════
@@ -1550,6 +1648,7 @@ function checkBossDead(){
   if(bossHP>0)return false;
   if(bossTimerInt)clearInterval(bossTimerInt);
   if(graceTimerInt)clearInterval(graceTimerInt);
+  if(angerTimerInt)clearInterval(angerTimerInt);
   const b=BOSSES[bossLvl];
   broadcastLog(`━━━━━━━━━━━━━━━━━━━━━━━━━━━`,'sep');
   broadcastLog(`🏆 ${b.name} SLAIN! Victory!`,'victory');
@@ -1759,6 +1858,11 @@ function renderPlayers(){
         <span class="pc-stat">ATK<b>${p.atk}</b></span>
         <span class="pc-stat">DEF<b>${p.def}</b></span>
         <span class="pc-stat">💰<b>${p.gold}</b></span>
+      </div>
+      <div class="pc-skills">
+        <span class="pc-skill" title="Farming level">🌾<b>${p.farmLvl||1}</b></span>
+        <span class="pc-skill" title="Mining level">⛏<b>${p.mineLvl||1}</b></span>
+        <span class="pc-skill" title="Dungeoneering level">🏚<b>${p.dungLvl||1}</b></span>
       </div>`;
     list.appendChild(card);
   });
