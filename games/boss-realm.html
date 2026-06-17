@@ -1148,11 +1148,15 @@ function tickFarm(pid,p){
 function tickMine(pid,p){
   const scale=skillScale(p.mineLvl||1);
   // Higher mine level = better ore chances
-  const orePool=p.mineLvl>=8?['iron','iron','gold','gold','mithril']:
-                p.mineLvl>=5?['stone','iron','iron','gold','mithril']:
-                ['wood','wood','stone','stone','stone','iron'];
+  const lvl=p.mineLvl||1;
+  const orePool=
+    lvl<=2?['wood','wood','wood','wood','stone']:           // 1-2: mostly wood
+    lvl<=4?['wood','stone','stone','stone','stone','iron']: // 3-4: mostly stone
+    lvl<=6?['stone','iron','iron','iron','gold']:           // 5-6: mostly iron
+    lvl<=8?['iron','iron','gold','gold','mithril']:         // 7-8: iron/gold
+           ['gold','gold','mithril','mithril','iron'];      // 9-10: gold/mithril
   const ore=orePool[Math.floor(Math.random()*orePool.length)];
-  const qty=ore==='stone'||ore==='wood'?Math.max(1,Math.round(rng(1,3)*scale)):1;
+  const qty=ore==='stone'||ore==='wood'||ore==='iron'?Math.max(1,Math.round(rng(1,2)*scale)):1;
   addItemToInv(p,ore,qty);
   let snippet=`+${qty}× ${ore} (Mine Lv${p.mineLvl||1})`;
   if(rng(1,10)===1){const d=rng(5,20);p.hp=Math.max(1,p.hp-d);snippet+=` (rockfall -${d}HP)`;}
@@ -1231,6 +1235,7 @@ const CMD_ALIASES={
   smith:['smith','craft','forge','make'],
   scout:['scout','spy','check','observe'],
 
+  use:['use','eat','drink','consume','take','quaff'],
   inv:['inv','inventory','bag','gear','items'],
   guild:['guild','class','join guild','profession','change'],
   special:['special','ability','skill','ultimate'],
@@ -1367,21 +1372,55 @@ function doShop(pid,p,args){
   if(!args.length){
     broadcastLog(`🛒 Shop — ${p.name} (${p.gold}g):`,'info');
     broadcastLog('  Buy: '+ITEMS.map(i=>`${i.emoji}${i.name} ${i.cost}g`).join(' · '),'info');
-    broadcastLog('  Sell: type "shop sell <ore> <qty>"  (stone=3g, iron=8g, gold=18g, mithril=60g, wood=2g/ea)','sys');
+    broadcastLog('  Sell ore: shop sell <ore> <qty>  (wood=2g, stone=3g, iron=8g, gold=18g, mithril=60g)','sys');
+    broadcastLog('  Sell gear: shop sell <item name>  (50% of value for shop items, 3g×stat for smithed)','sys');
     return;
   }
   // Sell path
   if(args[0]==='sell'){
-    const oreId=args[1]; const qty=parseInt(args[2])||1;
-    const price=SELL_PRICES[oreId];
-    if(!price){broadcastLog(`No sell price for "${oreId}". Sellable: stone, iron, gold, mithril, wood.`,'sys');return;}
-    const slot=p.inventory.find(i=>i.id===oreId&&i.qty>=qty);
-    if(!slot){broadcastLog(`${p.name} doesn't have ${qty}× ${oreId}.`,'sys');return;}
-    removeFromInv(p,oreId,qty);
-    const earned=price*qty;
-    p.gold+=earned;
-    broadcastLog(`${p.avatar} ${p.name} sells ${qty}× ${oreId} for ${earned}g.`,'loot');
-    syncPlayer(pid); return;
+    const sellTarget=args.slice(1).join(' ').trim();
+    const qty=parseInt(args[args.length-1])||1;
+    const sellId=args.slice(1,args.length-(Number.isInteger(parseInt(args[args.length-1]))?1:0)).join('_').toLowerCase();
+
+    // Try ore first
+    const orePrice=SELL_PRICES[sellId]||SELL_PRICES[args[1]];
+    if(orePrice){
+      const oreQty=parseInt(args[args.length-1])||1;
+      const oreId=SELL_PRICES[sellId]?sellId:args[1];
+      const slot=p.inventory.find(i=>i.id===oreId&&i.qty>=oreQty);
+      if(!slot){broadcastLog(`${p.name} doesn't have ${oreQty}× ${oreId}.`,'sys');return;}
+      removeFromInv(p,oreId,oreQty);
+      const earned=orePrice*oreQty;
+      p.gold+=earned;
+      broadcastLog(`${p.avatar} ${p.name} sells ${oreQty}× ${oreId} for ${earned}g.`,'loot');
+      syncPlayer(pid); return;
+    }
+
+    // Try selling gear (smithed or shop) from inventory
+    const gearQuery=args.slice(1).join(' ');
+    const gearItem=findItemByQuery(gearQuery,p);
+    if(gearItem&&!gearItem.consumable){
+      const inBag=p.inventory.find(i=>i.id===gearItem.id&&i.qty>0);
+      if(!inBag){
+        // Maybe it's equipped — hint to unequip first
+        const isEquipped=p.equipped&&Object.values(p.equipped).includes(gearItem.id);
+        broadcastLog(isEquipped
+          ?`${gearItem.emoji}${gearItem.name} is equipped — unequip it first, then sell.`
+          :`${p.name} doesn't have ${gearItem.emoji}${gearItem.name} in bag.`,'sys');
+        return;
+      }
+      // Sell value: smithed = 40% of atk/def val * 5g; shop items = 50% cost
+      const sellVal=gearItem.cost
+        ?Math.floor(gearItem.cost*0.5)
+        :Math.floor((gearItem.val||10)*3);
+      removeFromInv(p,gearItem.id,1);
+      p.gold+=sellVal;
+      broadcastLog(`${p.avatar} ${p.name} sells ${gearItem.emoji}${gearItem.name} for ${sellVal}g.`,'loot');
+      syncPlayer(pid); return;
+    }
+
+    broadcastLog(`Can't sell "${gearQuery}". Type "shop" to see sell prices, or "inv" to check your bag.`,'sys');
+    return;
   }
   // Buy path — consumables only
   const q=args.join(' ');
@@ -1470,15 +1509,19 @@ function doScout(pid,p){
 function doInventory(pid,p){
   const eq=p.equipped||{};
   const eqParts=['weapon','armor','offhand','feet'].map(s=>{
-    const it=eq[s]?ITEMS.find(i=>i.id===eq[s]):null;
+    const it=eq[s]?resolveItem(eq[s],p):null;
     return s+': '+(it?it.emoji+it.name:'—');
   });
   broadcastLog(`${p.avatar} ${p.name} Lv.${p.level} | Gold: ${p.gold}g | XP: ${p.xp}/${p.xpNeeded} | ATK: ${p.atk} DEF: ${p.def}`,'info');
   broadcastLog('  Equipped — '+eqParts.join('  ·  '),'info');
-  const gear=p.inventory.filter(i=>ITEMS.find(x=>x.id===i.id&&x.slot));
+  const gear=p.inventory.filter(i=>{
+    const shopDef=ITEMS.find(x=>x.id===i.id&&x.slot);
+    const smithDef=p._smithed&&p._smithed[i.id];
+    return shopDef||smithDef;
+  });
   const cons=p.inventory.filter(i=>ITEMS.find(x=>x.id===i.id&&x.consumable));
-  const ore=p.inventory.filter(i=>!ITEMS.find(x=>x.id===i.id));
-  if(gear.length)broadcastLog('  Gear (equippable) — '+gear.map(i=>{const x=ITEMS.find(d=>d.id===i.id);return (x?x.emoji:'')+i.id+'×'+i.qty;}).join(', ')+'  → equip <name>','loot');
+  const ore=p.inventory.filter(i=>!ITEMS.find(x=>x.id===i.id)&&!(p._smithed&&p._smithed[i.id]));
+  if(gear.length)broadcastLog('  Gear (equippable) — '+gear.map(i=>{const x=resolveItem(i.id,p);return (x?x.emoji:'')+( x?x.name:i.id)+'×'+i.qty;}).join(', ')+'  → equip <name>','loot');
   if(cons.length)broadcastLog('  Consumables (auto) — '+cons.map(i=>i.id+'×'+i.qty).join(', '),'heal');
   if(ore.length)broadcastLog('  Ore — '+ore.map(i=>i.id+'×'+i.qty).join(', ')+'  → craft','sys');
   if(!p.inventory.length)broadcastLog('  Bag is empty.','sys');
@@ -1560,61 +1603,72 @@ function doSpecial(pid,p){
 }
 
 function doEquip(pid,p,args){
+  if(!p.equipped)p.equipped={weapon:null,armor:null,offhand:null,feet:null};
   if(!args.length){
-    // Show current equipment
-    const eq=p.equipped||{};
-    const slots=['weapon','armor','offhand','feet'];
-    const lines=slots.map(s=>{
-      const it=eq[s]?ITEMS.find(i=>i.id===eq[s]):null;
-      return `${s}: ${it?it.emoji+it.name:'(empty)'}`;
+    // Show current equipment (resolve names from both ITEMS and _smithed)
+    const eq=p.equipped;
+    const lines=['weapon','armor','offhand','feet'].map(s=>{
+      const def=eq[s]?resolveItem(eq[s],p):null;
+      return `${s}: ${def?def.emoji+def.name:'(empty)'}`;
     }).join('  ·  ');
     broadcastLog(`${p.avatar} ${p.name} equipped: ${lines}`,'info');
     return;
   }
   const q=args.join(' ');
-  const item=ITEMS.find(i=>i.id===q||i.name.toLowerCase().includes(q));
-  if(!item){broadcastLog(`No item matching "${q}". Check your inv.`,'sys');return;}
-  if(item.consumable){broadcastLog(`${item.emoji}${item.name} is a consumable — use it automatically or just carry it.`,'sys');return;}
-  if(!item.slot){broadcastLog(`${item.emoji}${item.name} has no equipment slot.`,'sys');return;}
-  // Ensure equipped map exists
-  if(!p.equipped)p.equipped={weapon:null,armor:null,offhand:null,feet:null};
-  // Check player has it in inventory
+  const item=findItemByQuery(q,p);
+  if(!item){
+    broadcastLog(`No item matching "${q}". Type "inv" to see your bag.`,'sys');
+    return;
+  }
+  if(item.consumable){
+    broadcastLog(`${item.emoji}${item.name} is a consumable — type: use ${item.id} to use it.`,'sys');
+    return;
+  }
+  if(!item.slot){
+    broadcastLog(`${item.emoji}${item.name} has no equipment slot.`,'sys');
+    return;
+  }
+  // Check player actually has it in inventory
   const inInv=p.inventory.find(i=>i.id===item.id&&i.qty>0);
-  if(!inInv){broadcastLog(`${p.name} doesn't have ${item.emoji}${item.name} in their bag. Buy from shop first.`,'sys');return;}
-  // Unequip old item in that slot
+  if(!inInv){
+    broadcastLog(`${p.name} doesn't have ${item.emoji}${item.name} in their bag. Check "inv".`,'sys');
+    return;
+  }
+  // Unequip whatever is in that slot already
   const oldId=p.equipped[item.slot];
   if(oldId){
-    const oldItem=ITEMS.find(i=>i.id===oldId);
-    if(oldItem){
-      if(oldItem.effect==='atk')p.atk-=oldItem.val;
-      else if(oldItem.effect==='def')p.def-=oldItem.val;
-      else if(oldItem.effect==='flee'){/* boots passive */}
+    const oldDef=resolveItem(oldId,p);
+    if(oldDef){
+      if(oldDef.stat==='atk'||oldDef.effect==='atk')p.atk-=oldDef.val;
+      else if(oldDef.stat==='def'||oldDef.effect==='def')p.def-=oldDef.val;
       addItemToInv(p,oldId,1);
-      broadcastLog(`${p.name} unequips ${oldItem.emoji}${oldItem.name}.`,'sys');
+      broadcastLog(`${p.name} unequips ${oldDef.emoji}${oldDef.name}.`,'sys');
     }
   }
   // Equip new item
   p.equipped[item.slot]=item.id;
   removeFromInv(p,item.id,1);
-  if(item.effect==='atk')p.atk+=item.val;
-  else if(item.effect==='def')p.def+=item.val;
-  // boots: flee bonus is checked dynamically from equipped slot
-  broadcastLog(`${p.avatar} ${p.name} equips ${item.emoji}${item.name}! ${item.effect==='flee'?'Flee chance improved.':`${item.effect.toUpperCase()} ${item.val>0?'+':''}${item.val}`}`,'loot');
+  const statKey=item.stat||item.effect;
+  if(statKey==='atk')p.atk+=item.val;
+  else if(statKey==='def')p.def+=item.val;
+  const statStr=statKey==='flee'?'Flee chance improved.':statKey==='atk'||statKey==='def'?`${statKey.toUpperCase()} +${item.val}`:'';
+  broadcastLog(`${p.avatar} ${p.name} equips ${item.emoji}${item.name}! ${statStr}`,'loot');
   syncPlayer(pid);
 }
 
 function doUnequip(pid,p,args){
   if(!args.length){broadcastLog(`Usage: unequip <slot>  (weapon / armor / offhand / feet)`,'sys');return;}
-  const slot=args[0];
+  const slot=args[0].toLowerCase();
   if(!p.equipped||!p.equipped[slot]){broadcastLog(`Nothing equipped in "${slot}".`,'sys');return;}
   const oldId=p.equipped[slot];
-  const oldItem=ITEMS.find(i=>i.id===oldId);
-  if(oldItem){
-    if(oldItem.effect==='atk')p.atk-=oldItem.val;
-    else if(oldItem.effect==='def')p.def-=oldItem.val;
+  const oldDef=resolveItem(oldId,p);
+  if(oldDef){
+    const statKey=oldDef.stat||oldDef.effect;
+    if(statKey==='atk')p.atk-=oldDef.val;
+    else if(statKey==='def')p.def-=oldDef.val;
     addItemToInv(p,oldId,1);
     p.equipped[slot]=null;
-    broadcastLog(`${p.avatar} ${p.name} removes ${oldItem.emoji}${oldItem.name} → back in bag.`,'sys');
+    broadcastLog(`${p.avatar} ${p.name} removes ${oldDef.emoji}${oldDef.name} → back in bag.`,'sys');
   }
   syncPlayer(pid);
 }
@@ -1795,6 +1849,38 @@ function _drawOnCanvas(canvas){
 //  HELPERS
 // ═══════════════════════════════════════════
 function rng(a,b){return Math.floor(Math.random()*(b-a+1))+a;}
+
+// Resolve an item definition by id — checks ITEMS first, then p._smithed
+function resolveItem(id, p){
+  const shopItem=ITEMS.find(i=>i.id===id);
+  if(shopItem)return shopItem;
+  if(p&&p._smithed&&p._smithed[id])return {id,...p._smithed[id]};
+  return null;
+}
+
+// Find an item in inventory by fuzzy query, checking both ITEMS and smithed gear
+function findItemByQuery(q, p){
+  q=q.toLowerCase().trim();
+  // Exact id match in ITEMS
+  let item=ITEMS.find(i=>i.id===q);
+  if(item)return item;
+  // Name match in ITEMS
+  item=ITEMS.find(i=>i.name.toLowerCase().includes(q));
+  if(item)return item;
+  // Smithed items: match by id (e.g. iron_sword) or name (e.g. "iron sword")
+  if(p&&p._smithed){
+    const qNorm=q.replace(/\s+/g,'_');
+    // Exact id
+    if(p._smithed[qNorm])return {id:qNorm,...p._smithed[qNorm]};
+    // Partial id or name match
+    const entry=Object.entries(p._smithed).find(([id,def])=>
+      id.includes(qNorm)||qNorm.includes(id)||
+      def.name.toLowerCase().includes(q)
+    );
+    if(entry)return {id:entry[0],...entry[1]};
+  }
+  return null;
+}
 function addItemToInv(p,id,qty){const e=p.inventory.find(i=>i.id===id);if(e)e.qty+=qty;else p.inventory.push({id,qty});}
 function removeFromInv(p,id,qty){const e=p.inventory.find(i=>i.id===id);if(!e)return;e.qty-=qty;if(e.qty<=0)p.inventory=p.inventory.filter(i=>i.id!==id);}
 
@@ -1876,10 +1962,24 @@ function showOverlay(win,legendary=false){
   document.getElementById('overlay-msg').textContent=legendary
     ?'All ten bosses vanquished. The realm rests.':win?'The beast falls. A new challenge awaits.':'Every hero has fallen. Try again?';
   const me=players[myId];
-  if(me)document.getElementById('overlay-stats').innerHTML=
-    `<b>${me.name}</b> the ${me.clsEmoji} ${me.clsName}<br>`+
-    `Level <b>${me.level}</b> · Gold <b>${me.gold}</b> · Total damage dealt: <b>${me.totalDmg||0}</b><br>`+
-    `Bosses slain: <b>${me.kills||0}</b>`;
+  if(me){
+    const invStr=me.inventory.length
+      ? me.inventory.map(i=>{const x=resolveItem(i.id,me);return (x?x.emoji+x.name:i.id)+'×'+i.qty;}).join(', ')
+      : 'empty';
+    const eqStr=['weapon','armor','offhand','feet']
+      .map(s=>{const def=me.equipped&&me.equipped[s]?resolveItem(me.equipped[s],me):null;return def?def.emoji+def.name:null;})
+      .filter(Boolean).join(', ')||'nothing';
+    // Show all party members briefly too
+    const partyLines=Object.values(players).filter(p=>p.id!==myId)
+      .map(p=>`${p.avatar} <b>${p.name}</b>: Lv.${p.level} · ${p.gold}g · ${p.inventory.length?p.inventory.map(i=>{const x=resolveItem(i.id,p);return (x?x.emoji+x.name:i.id)+'×'+i.qty;}).join(', '):'empty bag'}`)
+      .join('<br>');
+    document.getElementById('overlay-stats').innerHTML=
+      `${me.avatar} <b>${me.name}</b> the ${me.clsEmoji} ${me.clsName}<br>`+
+      `Level <b>${me.level}</b> · Gold <b>${me.gold}g</b> · Damage dealt: <b>${me.totalDmg||0}</b><br>`+
+      `Equipped: <b>${eqStr}</b><br>`+
+      `Bag: <b>${invStr}</b><br>`+
+      (partyLines?`<br><span style="color:var(--text3);font-size:.72rem">Party</span><br>${partyLines}`:'');
+  }
   document.getElementById('overlay-btn').textContent=legendary?'Play Again':'Try Again';
   document.getElementById('overlay').className='overlay show';
 }
