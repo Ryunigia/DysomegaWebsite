@@ -497,6 +497,10 @@
                 <button class="primary" style="width:100%;margin-bottom:8px" id="btn-solo">▶ Play solo vs bots</button>
                 <button style="width:100%;margin-bottom:8px" id="btn-host">📡 Host a game (get join code)</button>
               </div>
+              <div style="display:flex;align-items:center;gap:10px;margin-bottom:1rem;padding:8px 12px;border:1px solid var(--border);border-radius:6px;background:var(--bg3);">
+                <span style="font-size:14px;flex:1;color:var(--text-muted);">⚔️ PvP — players can eat each other</span>
+                <button id="btn-pvp-toggle" style="min-width:64px;font-size:12px;font-weight:700;letter-spacing:0.05em;">OFF</button>
+              </div>
               <div class="row">
                 <input id="join-input" placeholder="Enter join code…" maxlength="6"
                   style="text-transform:uppercase;letter-spacing:3px" />
@@ -521,6 +525,7 @@
               <span id="hud-p2-wrap" style="display:none">Friend: <b id="hud-p2">—</b></span>
               <span>Bots: <b id="hud-bots">—</b></span>
               <span id="hud-conn" style="display:none">🟢 Connected</span>
+              <span id="hud-pvp" style="display:none;color:#E24B4A;">⚔️ PvP ON</span>
             </div>
             <button id="btn-restart" style="margin-top:8px">↺ Restart solo</button>
           </div>
@@ -615,6 +620,17 @@
 
   <script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
   <script>
+    // PvP toggle
+    let pvpEnabled = false;
+    document.getElementById('btn-pvp-toggle').onclick = () => {
+      pvpEnabled = !pvpEnabled;
+      const btn = document.getElementById('btn-pvp-toggle');
+      btn.textContent = pvpEnabled ? 'ON' : 'OFF';
+      btn.style.background = pvpEnabled ? 'var(--accent)' : '';
+      btn.style.borderColor = pvpEnabled ? 'var(--accent)' : '';
+      btn.style.color = pvpEnabled ? '#0b0b0f' : '';
+    };
+
     // Banner close
     document.getElementById('bannerClose').addEventListener('click', () => {
       const b = document.getElementById('bannerAd');
@@ -931,7 +947,7 @@
 
       // Super Magnetism: also pull bots/players within range
       if (superMagnet && magnetRange > 0 && eater.id === 'me') {
-        const pullTargets = [...gs.bots, ...(gs.p2 ? [gs.p2] : [])].filter(t => !t.dead);
+        const pullTargets = [...gs.bots, ...(pvpEnabled && gs.p2 ? [gs.p2] : [])].filter(t => !t.dead);
         for (const t of pullTargets) {
           const d = dist(eater, t);
           if (d < magnetRange && d > eater.r + t.r) {
@@ -944,8 +960,8 @@
       }
 
       const targets = [...gs.bots,
-        (gs.p2 && eater.id !== 'p2' ? gs.p2 : null),
-        (gs.me && eater.id !== 'me' ? gs.me : null)
+        (pvpEnabled && gs.p2 && eater.id !== 'p2' ? gs.p2 : null),
+        (pvpEnabled && gs.me && eater.id !== 'me' ? gs.me : null)
       ].filter(Boolean);
 
       for (const t of targets) {
@@ -1027,8 +1043,8 @@
         // Hit blobs (exclude the shooter)
         const targets = [
           ...gs.bots.filter(b => b.id !== pr.owner),
-          (gs.p2 && pr.owner !== 'p2' ? gs.p2 : null),
-          (gs.me && pr.owner !== 'me' ? gs.me : null)
+          (pvpEnabled && gs.p2 && pr.owner !== 'p2' ? gs.p2 : null),
+          (pvpEnabled && gs.me && pr.owner !== 'me' ? gs.me : null)
         ].filter(Boolean);
         for (const t of targets) {
           if (t.dead) continue;
@@ -1162,7 +1178,11 @@
       ctx.beginPath(); ctx.arc(sx, sy, sr, 0, Math.PI * 2);
       ctx.fillStyle = b.color; ctx.fill();
       // Tint ring: green = I can eat them, red = they can eat me
-      if (b._canEatMe) {
+      // PvP-active ring for the other player (extra visual warning)
+      if (pvpEnabled && b.id === 'p2') {
+        const pulse = 0.55 + 0.45 * Math.sin(Date.now() / 300);
+        ctx.strokeStyle = `rgba(220,160,255,${pulse})`; ctx.lineWidth = 4; ctx.stroke();
+      } else if (b._canEatMe) {
         ctx.strokeStyle = 'rgba(255,80,80,0.7)'; ctx.lineWidth = 3; ctx.stroke();
       } else if (b._iCanEat) {
         ctx.strokeStyle = 'rgba(80,255,120,0.7)'; ctx.lineWidth = 3; ctx.stroke();
@@ -1449,6 +1469,8 @@
       const myShieldHP = ((me.upgrades && me.upgrades.shield) || 0) * 50;
       for (const b of [...gs.bots, ...(gs.p2 ? [gs.p2] : [])]) {
         if (b.dead) { b._canEatMe = false; b._iCanEat = false; continue; }
+        // Skip eat-tint for p2 when pvp is off
+        if (!pvpEnabled && b.id === 'p2') { b._canEatMe = false; b._iCanEat = false; continue; }
         const bPredator = !!(b.upgrades && b.upgrades.predator);
         const bShieldHP = ((b.upgrades && b.upgrades.shield) || 0) * 50;
         // Can they eat me? (account for my shield, their predator status)
@@ -1526,7 +1548,7 @@
         const now = Date.now();
         if (now - lastSent > 50) {
           lastSent = now;
-          conn.send({ type: 'state', x: gs.me.x, y: gs.me.y, r: gs.me.r, score: gs.me.score });
+          conn.send({ type: 'state', x: gs.me.x, y: gs.me.y, r: gs.me.r, score: gs.me.score, upgrades: gs.me.upgrades });
         }
       }
 
@@ -1682,6 +1704,7 @@
       showScreen('game');
       gameState = initGame(asHost ? 0 : 1);
       if (conn) document.getElementById('hud-conn').style.display = '';
+      document.getElementById('hud-pvp').style.display = pvpEnabled ? '' : 'none';
       cancelAnimationFrame(animId);
       gameLoop();
     }
@@ -1689,11 +1712,29 @@
     function setupConn(c) {
       conn = c;
       c.on('data', data => {
+        if (data.type === 'world_init') {
+          // Joiner receives the authoritative world from host
+          pvpEnabled = data.pvp;
+          W = data.W; H = data.H;
+          gameState = initGame(1); // init with index 1 (different color)
+          // Overwrite with host's world state so everything matches
+          gameState.me.x = data.p2x; gameState.me.y = data.p2y;
+          gameState.pellets = data.pellets;
+          gameState.bots = data.bots.map(b => Object.assign(makeBlob(b.id, b.x, b.y, b.color, b.name, true), b));
+          // p2 from joiner's perspective = the host
+          gameState.p2 = makeBlob('p2', data.p1x, data.p1y, COLORS[0], 'Friend', false);
+          showScreen('game');
+          document.getElementById('hud-pvp').style.display = pvpEnabled ? '' : 'none';
+          cancelAnimationFrame(animId);
+          gameLoop();
+          return;
+        }
         if (!gameState) return;
         if (data.type === 'state') {
           if (!gameState.p2) gameState.p2 = makeBlob('p2', data.x, data.y, COLORS[1], 'Friend', false);
           gameState.p2.x = data.x; gameState.p2.y = data.y;
           gameState.p2.r = data.r; gameState.p2.score = data.score;
+          if (data.upgrades !== undefined) gameState.p2.upgrades = data.upgrades;
         }
         if (data.type === 'start') startGame(false);
       });
@@ -1704,7 +1745,7 @@
     function genCode() { return Math.random().toString(36).substr(2, 6).toUpperCase(); }
 
     // ── BUTTONS ──
-    document.getElementById('btn-solo').onclick = () => { gameState = initGame(0); showScreen('game'); cancelAnimationFrame(animId); gameLoop(); };
+    document.getElementById('btn-solo').onclick = () => { startGame(true); };
     document.getElementById('btn-host').onclick = () => {
       const code = genCode(); showScreen('lobby');
       document.getElementById('lobby-title').textContent = 'Hosting game';
@@ -1716,7 +1757,24 @@
       peer.on('connection', c => {
         setupConn(c);
         document.getElementById('lobby-status').textContent = 'Friend connected! Starting…';
-        setTimeout(() => { startGame(true); setTimeout(() => { if (conn && conn.open) conn.send({ type: 'start' }); }, 200); }, 600);
+        setTimeout(() => {
+          startGame(true);
+          setTimeout(() => {
+            if (conn && conn.open) {
+              // Send the authoritative world state so joiner's world matches exactly
+              conn.send({
+                type: 'world_init',
+                pvp: pvpEnabled,
+                W, H,
+                pellets: gameState.pellets,
+                bots: gameState.bots.map(b => ({ id: b.id, x: b.x, y: b.y, r: b.r, color: b.color, name: b.name, baseName: b.baseName, upgrades: b.upgrades, score: b.score, dead: b.dead })),
+                p1x: gameState.me.x, p1y: gameState.me.y,   // host's position (joiner's p2)
+                p2x: Math.min(Math.max(gameState.me.x + (Math.random() > 0.5 ? 600 : -600), 100), W - 100),
+                p2y: Math.min(Math.max(gameState.me.y + (Math.random() > 0.5 ? 600 : -600), 100), H - 100)
+              });
+            }
+          }, 300);
+        }, 600);
       });
       peer.on('error', e => { document.getElementById('lobby-status').textContent = 'Error: ' + e.type; });
     };
