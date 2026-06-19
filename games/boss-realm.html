@@ -526,6 +526,8 @@ document.getElementById('bannerClose').addEventListener('click', () => {
 //  DATA
 // ═══════════════════════════════════════════
 const AVATARS=['🧙','⚔️','🏹','🛡️','🗡️','🪄','🔮','🐺','🦊','🐉','🧝','🧟'];
+const PLAYER_COLORS=['#e8a030','#4fc3f7','#81c784','#f48fb1','#ce93d8','#80cbc4','#ffb74d','#90caf9','#a5d6a7','#ef9a9a'];
+function getPlayerColor(idx){return PLAYER_COLORS[idx%PLAYER_COLORS.length];}
 
 const CLASSES=[
   {id:'villager', name:'Villager',   emoji:'🧑', cost:0,   hpB:0,   atkB:0,  defB:0,  desc:'The humble beginning. Can do everything, master of nothing.',special:'Plead',specialDesc:'Beg the boss to delay its next attack by 8s.'},
@@ -850,6 +852,10 @@ function handleMsg(msg,fromConn){
     case 'grace_tick': graceSec=msg.sec;updateTimer(msg.sec,true);break;
     case 'next_level': bossLvl=msg.lvl;bossHP=msg.hp;bossMaxHP=msg.hp;bossEnraged=false;updateBossUI();break;
     case 'reset': resetForRetry(msg.lvl);break;
+    case 'chat':
+      if(isHost){const cp=players[msg.pid];if(cp){const cl=`${cp.avatar} ${cp.name}: "${msg.text}"`;connections.forEach(c=>{if(c.open&&c!==fromConn)c.send({type:'chat_display',text:cl,color:msg.color});});if(msg.pid!==myId)addLog(cl,'action',msg.color);}}
+      break;
+    case 'chat_display': addLog(msg.text,'action',msg.color);break;
     case 'command': if(isHost)processCommand(msg.pid,msg.tokens,msg.raw);break;
     case 'mode_change': if(players[msg.id]){players[msg.id].status=msg.mode;renderPlayers();}break;
   }
@@ -867,6 +873,7 @@ function mkPlayer(id,name,avatar,clsId){
     hp:200+c.hpB, maxHp:200+c.hpB,
     atk:20+c.atkB, def:5+c.defB,
     gold:50, xp:0, level:1, xpNeeded:60,
+    colorIdx:Object.keys(players).length,
     inventory:[], equipped:{weapon:null,armor:null,offhand:null,feet:null},
     status:'idle', alive:true,
     kills:0, totalDmg:0,
@@ -1256,15 +1263,19 @@ function sendCommand(){
   const inp=document.getElementById('cmd-input');
   const raw=inp.value.trim(); if(!raw)return;
   inp.value='';
-  const tokens=raw.toLowerCase().split(/\s+/);
   const p=players[myId]; if(!p)return;
-  addLog(`${p.avatar} ${p.name}: "${raw}"`, 'action');
+  const tokens=raw.toLowerCase().split(/\s+/);
+  const color=getPlayerColor(p.colorIdx||0);
+  addLog(`${p.avatar} ${p.name}: "${raw}"`, 'action', color);
+  sendToHost({type:'chat',pid:myId,text:raw,color});
   sendToHost({type:'command',pid:myId,tokens,raw});
 }
 
 function processCommand(pid,tokens,raw){
   if(!isHost)return;
   const p=players[pid]; if(!p)return;
+  const _pcolor=getPlayerColor(p.colorIdx||0);
+  broadcast({type:'chat_display',text:`${p.avatar} ${p.name}: "${raw}"`,color:_pcolor});
   if(!p.alive){broadcastLog(`${p.name} is dead. Others can revive them.`,'death');return;}
   const verb=parseVerb(tokens);
   const args=tokens.slice(1);
@@ -1893,7 +1904,7 @@ function syncPlayer(pid){
 
 function broadcastLog(text,cls){addLog(text,cls);if(isHost&&!isSolo)broadcast({type:'log',text,cls});}
 
-function addLog(text,cls='sys'){
+function addLog(text,cls='sys',color=null){
   const log=document.getElementById('log');
   const now=new Date();
   const ts=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
@@ -1903,6 +1914,7 @@ function addLog(text,cls='sys'){
     if(!line.trim())return;
     const d=document.createElement('div');
     d.className='log-line '+(cls||'sys');
+    if(color)d.style.color=color;
     if(cls==='sep'){d.textContent=line;}
     else if(i===0){d.innerHTML=`<span class="log-time">${ts}</span>${cls==='ai'?'<span class="log-ai-tag">AI</span>':''}${escHtml(line)}`;}
     else{d.innerHTML=`<span class="log-time" style="opacity:0"> ${ts}</span>${escHtml(line)}`;}
@@ -1923,11 +1935,12 @@ function renderPlayers(){
     const fillCls='mini-hp-fill'+(hpPct<15?' crit':hpPct<35?' low':'');
     const card=document.createElement('div');
     card.className='player-card'+(p.id===myId?' me':'')+(p.alive?'':' dead');
+    const pColor=getPlayerColor(p.colorIdx||0);
     card.innerHTML=`
       <div class="pc-top">
         <div class="pc-avatar">${p.avatar}</div>
         <div class="pc-right">
-          <div class="pc-name">${escHtml(p.name)}${p.id===myId?' <span style="color:var(--amber3);font-size:.58rem">YOU</span>':''}</div>
+          <div class="pc-name" style="color:${pColor}">${escHtml(p.name)}${p.id===myId?' <span style="color:var(--amber3);font-size:.58rem">YOU</span>':''}</div>
           <div class="pc-class">${p.clsEmoji} ${p.clsName}</div>
           <div class="pc-mode">${p.alive?p.status:'☠ dead'}</div>
         </div>
