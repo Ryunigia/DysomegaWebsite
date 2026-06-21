@@ -393,7 +393,7 @@ input[type=text]::placeholder{color:var(--text3)}
     <span>DYSOMEGA</span>
   </a>
   <div style="display:flex;align-items:center;gap:12px">
-    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;border:1px solid var(--border);padding:2px 7px;border-radius:2px">v0.3</span>
+    <span style="font-family:var(--font-mono);font-size:10px;color:var(--text-dim);letter-spacing:.1em;border:1px solid var(--border);padding:2px 7px;border-radius:2px">v0.4</span>
     <a class="nav-back" href="../index.html#play">← All Games</a>
   </div>
 </nav>
@@ -527,7 +527,10 @@ document.getElementById('bannerClose').addEventListener('click', () => {
 // ═══════════════════════════════════════════
 const AVATARS=['🧙','⚔️','🏹','🛡️','🗡️','🪄','🔮','🐺','🦊','🐉','🧝','🧟'];
 const PLAYER_COLORS=['#e8a030','#4fc3f7','#81c784','#f48fb1','#ce93d8','#80cbc4','#ffb74d','#90caf9','#a5d6a7','#ef9a9a'];
-function getPlayerColor(idx){return PLAYER_COLORS[idx%PLAYER_COLORS.length];}
+function getPlayerColor(pid){// always derive from player ID — stable across all clients
+if(!pid)return PLAYER_COLORS[0];
+let h=0;for(const c of String(pid))h=(h*31+c.charCodeAt(0))&0xffff;
+return PLAYER_COLORS[h%PLAYER_COLORS.length];}
 
 const CLASSES=[
   {id:'villager', name:'Villager',   emoji:'🧑', cost:0,   hpB:0,   atkB:0,  defB:0,  desc:'The humble beginning. Can do everything, master of nothing.',special:'Plead',specialDesc:'Beg the boss to delay its next attack by 8s.'},
@@ -767,7 +770,13 @@ function initPeer(name,code){
       document.getElementById('skip-countdown-btn').onclick=()=>{clearInterval(cdInt);startGame();};
     } else {
       roomId=code; isSolo=false;
-      players[myId]=mkPlayer(myId,name,selectedAvatar,'villager');
+      // Don't assign colorIdx locally — let host assign via state sync
+      // Create placeholder; host will send full player object via state
+      players[myId]={id:myId,name,avatar:selectedAvatar,cls:'villager',clsName:'Villager',clsEmoji:'🧑',
+        hp:200,maxHp:200,atk:20,def:5,gold:50,xp:0,level:1,xpNeeded:60,
+        inventory:[],equipped:{weapon:null,armor:null,offhand:null,feet:null},
+        status:'idle',alive:true,kills:0,totalDmg:0,
+        farmLvl:1,farmXp:0,mineLvl:1,mineXp:0,dungLvl:1,dungXp:0};
       setStatus('Connecting to '+code+'…');
       const conn=peer.connect('BR-'+code,{reliable:true,serialization:'json'});
       const connTmr=setTimeout(()=>setStatus('Room not found or host offline.','var(--red2)'),7000);
@@ -811,7 +820,14 @@ function handleMsg(msg,fromConn){
       broadcastLog(`${msg.name} the Villager entered the realm!`,'info');
       renderPlayers(); break;
     case 'state':
-      Object.entries(msg.players).forEach(([id,p])=>{if(id!==myId)players[id]=p;});
+      Object.entries(msg.players).forEach(([id,p])=>{
+        if(id===myId){
+          // Merge host-assigned fields (colorIdx etc) but keep local HP/status
+          players[id]={...players[id],...p};
+        } else {
+          players[id]=p;
+        }
+      });
       bossHP=msg.bossHP;bossMaxHP=msg.bossMaxHP;bossLvl=msg.bossLvl;
       timerSec=msg.timerSec;graceSec=msg.graceSec;graceActive=msg.graceActive;
       gameActive=true;bossEnraged=msg.bossEnraged;bossAnger=msg.bossAnger||0;
@@ -853,9 +869,9 @@ function handleMsg(msg,fromConn){
     case 'next_level': bossLvl=msg.lvl;bossHP=msg.hp;bossMaxHP=msg.hp;bossEnraged=false;updateBossUI();break;
     case 'reset': resetForRetry(msg.lvl);break;
     case 'chat':
-      if(isHost){const cp=players[msg.pid];if(cp){const cl=`${cp.avatar} ${cp.name}: "${msg.text}"`;connections.forEach(c=>{if(c.open&&c!==fromConn)c.send({type:'chat_display',text:cl,color:msg.color});});if(msg.pid!==myId)addLog(cl,'action',msg.color);}}
+      if(isHost){const cp=players[msg.pid];if(cp){const cl=`${cp.avatar} ${cp.name}: "${msg.text}"`;connections.forEach(c=>{if(c.open&&c!==fromConn)c.send({type:'chat_display',pid:msg.pid,text:cl});});if(msg.pid!==myId)addLog(cl,'action',getPlayerColor(msg.pid));}}
       break;
-    case 'chat_display': addLog(msg.text,'action',msg.color);break;
+    case 'chat_display': addLog(msg.text,'action',getPlayerColor(msg.pid));break;
     case 'command': if(isHost)processCommand(msg.pid,msg.tokens,msg.raw);break;
     case 'mode_change': if(players[msg.id]){players[msg.id].status=msg.mode;renderPlayers();}break;
   }
@@ -873,7 +889,6 @@ function mkPlayer(id,name,avatar,clsId){
     hp:200+c.hpB, maxHp:200+c.hpB,
     atk:20+c.atkB, def:5+c.defB,
     gold:50, xp:0, level:1, xpNeeded:60,
-    colorIdx:Object.keys(players).length,
     inventory:[], equipped:{weapon:null,armor:null,offhand:null,feet:null},
     status:'idle', alive:true,
     kills:0, totalDmg:0,
@@ -1265,17 +1280,14 @@ function sendCommand(){
   inp.value='';
   const p=players[myId]; if(!p)return;
   const tokens=raw.toLowerCase().split(/\s+/);
-  const color=getPlayerColor(p.colorIdx||0);
-  addLog(`${p.avatar} ${p.name}: "${raw}"`, 'action', color);
-  sendToHost({type:'chat',pid:myId,text:raw,color});
+  addLog(`${p.avatar} ${p.name}: "${raw}"`, 'action', getPlayerColor(myId));
+  sendToHost({type:'chat',pid:myId,text:raw});
   sendToHost({type:'command',pid:myId,tokens,raw});
 }
 
 function processCommand(pid,tokens,raw){
   if(!isHost)return;
   const p=players[pid]; if(!p)return;
-  const _pcolor=getPlayerColor(p.colorIdx||0);
-  broadcast({type:'chat_display',text:`${p.avatar} ${p.name}: "${raw}"`,color:_pcolor});
   if(!p.alive){broadcastLog(`${p.name} is dead. Others can revive them.`,'death');return;}
   const verb=parseVerb(tokens);
   const args=tokens.slice(1);
@@ -1935,7 +1947,7 @@ function renderPlayers(){
     const fillCls='mini-hp-fill'+(hpPct<15?' crit':hpPct<35?' low':'');
     const card=document.createElement('div');
     card.className='player-card'+(p.id===myId?' me':'')+(p.alive?'':' dead');
-    const pColor=getPlayerColor(p.colorIdx||0);
+    const pColor=getPlayerColor(p.id);
     card.innerHTML=`
       <div class="pc-top">
         <div class="pc-avatar">${p.avatar}</div>
