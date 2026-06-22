@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:           #0b0b0f;
+      --bg2:          #111118;
+      --accent:       #aaaaaa;
+      --accent-glow:  rgba(232,160,48,0.08);
+      --text:         #e8e6df;
+      --text-muted:   #8a8880;
+      --text-dim:     #4a4845;
+      --border:       rgba(255,255,255,0.07);
+      --border-accent:rgba(232,160,48,0.3);
+      --font-mono:    'Share Tech Mono', monospace;
+      --font-sans:    'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg2);
+      color: var(--text);
+      font-family: var(--font-sans);
+      font-size: 16px;
+      line-height: 1.7;
+      padding: 0;
+      overflow-x: hidden;
+    }
+
+    /* ── Filter pills ── */
+    .tl-filter { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 2rem; }
+    .tl-pill {
+      font-family: var(--font-mono); font-size: 11px; letter-spacing: 0.1em;
+      padding: 5px 14px; border-radius: 2px; cursor: pointer;
+      border: 1px solid var(--border); color: var(--text-muted);
+      background: transparent; transition: all 0.2s; text-transform: uppercase;
+    }
+    .tl-pill:hover { border-color: var(--border-accent); color: var(--accent); }
+    .tl-pill.active { border-color: var(--border-accent); color: var(--accent); background: var(--accent-glow); }
+
+    /* ── Timeline ── */
+    .tl-wrap { position: relative; }
+    .tl-spine { position: absolute; left: 130px; top: 0; bottom: 0; width: 1px; background: var(--border); }
+
+    .tl-entry { display: flex; align-items: flex-start; margin-bottom: 1.75rem; }
+    .tl-entry.tl-hidden { display: none; }
+
+    .tl-date {
+      width: 120px; flex-shrink: 0;
+      font-family: var(--font-mono); font-size: 11px; color: var(--text-dim);
+      text-align: right; padding-right: 18px; padding-top: 3px;
+      letter-spacing: 0.05em; line-height: 1.5;
+    }
+    .tl-dot-col { width: 20px; flex-shrink: 0; display: flex; justify-content: center; padding-top: 5px; position: relative; z-index: 1; }
+    .tl-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+
+    .tl-card {
+      flex: 1; margin-left: 18px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 4px;
+      padding: 1rem 1.25rem; transition: border-color 0.2s;
+    }
+    .tl-card:hover { border-color: var(--border-accent); }
+
+    .tl-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+    .tl-card-title { font-size: 14px; font-weight: 700; color: var(--text); margin: 0; line-height: 1.4; }
+
+    .tl-status {
+      font-family: var(--font-mono); font-size: 10px; padding: 3px 9px;
+      border-radius: 2px; flex-shrink: 0; letter-spacing: 0.08em; white-space: nowrap;
+    }
+    .tl-status-wip  { background: var(--accent-glow); color: var(--accent); border: 1px solid var(--border-accent); }
+    .tl-status-done { background: rgba(29,158,117,0.08); color: #1D9E75; border: 1px solid rgba(29,158,117,0.3); }
+
+    .tl-tags { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 8px; }
+    .tl-tag { font-family: var(--font-mono); font-size: 10px; padding: 2px 8px; border-radius: 2px; letter-spacing: 0.07em; }
+
+    .tl-desc { font-size: 13px; color: var(--text-muted); line-height: 1.65; margin: 0; }
+    .tl-link {
+      display: inline-block; font-family: var(--font-mono); font-size: 11px;
+      color: var(--accent); margin-top: 10px; text-decoration: none;
+      letter-spacing: 0.08em; opacity: 0.8; transition: opacity 0.15s;
+    }
+    .tl-link:hover { opacity: 1; }
+
+    @media (max-width: 600px) {
+      .tl-spine { left: 0; }
+      .tl-date  { display: none; }
+      .tl-dot-col { width: 16px; }
+      .tl-card  { margin-left: 12px; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="tl-filter" id="tlFilter">
+  <!-- pills are built automatically from the tags in ENTRIES below -->
+</div>
+
+<div class="tl-wrap" id="tlWrap">
+  <div class="tl-spine"></div>
+</div>
+
+<script>
+// ================================================================
+//  👇 THIS IS THE ONLY SECTION YOU EVER NEED TO EDIT
+//
+//  To add a new blog post, paste a new object at the TOP of
+//  the ENTRIES array below and save the file. That's it.
+//
+//  Fields:
+//    date   — displayed on the left  (e.g. 'Jul 2026')
+//    title  — bold heading of the card
+//    status — 'wip' (amber "IN PROGRESS") or 'done' (teal "FINISHED")
+//    tags   — array of tag strings; first tag sets the dot colour
+//    desc   — short description paragraph
+//    link   — optional URL for a "Read more →" link; '' to hide
+// ================================================================
+var ENTRIES = [
+  {
+    date:   '22 June 2026',
+    title:  'Blogs now achieved inside the website!',
+    status: 'done',
+    tags:   ['Website'],
+    desc:   'Custom, self hosted, clean and simple! For all to enjoy~ (who actually reads this?)',
+    link:   ''
+  }
+];
+// ================================================================
+//  END OF EDITABLE SECTION — don't touch anything below this line
+// ================================================================
+
+// Hash a tag string to a consistent HSL hue (0–359)
+function tagHue(tag) {
+  var h = 0;
+  for (var i = 0; i < tag.length; i++) {
+    h = (h * 31 + tag.charCodeAt(i)) & 0xffff;
+  }
+  return h % 360;
+}
+
+// Return inline CSS styles for a tag chip and its dot colour
+function tagStyles(tag) {
+  var hue = tagHue(tag);
+  return {
+    chip: 'background:hsla(' + hue + ',60%,55%,0.10);' +
+          'color:hsl('       + hue + ',70%,72%);' +
+          'border:1px solid hsla(' + hue + ',60%,55%,0.30);',
+    dot:  'hsl(' + hue + ',55%,60%)'
+  };
+}
+
+// Build filter pills from unique tags across all entries
+var seenTags = [];
+ENTRIES.forEach(function(e) {
+  e.tags.forEach(function(t) {
+    if (seenTags.indexOf(t) === -1) seenTags.push(t);
+  });
+});
+
+var filterBar = document.getElementById('tlFilter');
+['All'].concat(seenTags).forEach(function(tag) {
+  var btn = document.createElement('button');
+  btn.className = 'tl-pill' + (tag === 'All' ? ' active' : '');
+  btn.textContent = tag;
+  btn.dataset.tag = tag === 'All' ? 'all' : tag;
+  if (tag !== 'All') {
+    var s = tagStyles(tag);
+    btn.dataset.chipStyle = s.chip; // store for active state
+    btn.style.cssText = s.chip;
+  }
+  filterBar.appendChild(btn);
+});
+
+filterBar.addEventListener('click', function(e) {
+  var btn = e.target.closest('.tl-pill');
+  if (!btn) return;
+  var tag = btn.dataset.tag;
+  document.querySelectorAll('.tl-pill').forEach(function(p) { p.classList.remove('active'); });
+  btn.classList.add('active');
+  document.querySelectorAll('.tl-entry').forEach(function(el) {
+    var entryTags = el.dataset.tags.split(',');
+    el.classList.toggle('tl-hidden', tag !== 'all' && entryTags.indexOf(tag) === -1);
+  });
+  sendHeight();
+});
+
+// Build timeline entries
+var wrap = document.getElementById('tlWrap');
+ENTRIES.forEach(function(e) {
+  var dotColor = tagStyles(e.tags[0]).dot;
+  var badge = e.status === 'wip'
+    ? '<span class="tl-status tl-status-wip">IN PROGRESS</span>'
+    : '<span class="tl-status tl-status-done">FINISHED</span>';
+  var tags = e.tags.map(function(t) {
+    return '<span class="tl-tag" style="' + tagStyles(t).chip + '">' + t.toUpperCase() + '</span>';
+  }).join('');
+  var link = e.link
+    ? '<a class="tl-link" href="' + e.link + '" target="_blank" rel="noopener">Read more →</a>'
+    : '';
+
+  var div = document.createElement('div');
+  div.className = 'tl-entry';
+  div.dataset.tags = e.tags.join(',');
+  div.innerHTML =
+    '<div class="tl-date">'   + e.date + '</div>' +
+    '<div class="tl-dot-col"><div class="tl-dot" style="background:' + dotColor + '"></div></div>' +
+    '<div class="tl-card">' +
+      '<div class="tl-card-top">' +
+        '<p class="tl-card-title">' + e.title + '</p>' + badge +
+      '</div>' +
+      '<div class="tl-tags">' + tags + '</div>' +
+      '<p class="tl-desc">' + e.desc + '</p>' +
+      link +
+    '</div>';
+  wrap.appendChild(div);
+});
+
+// Tell parent iframe how tall to be (so no scrollbar appears)
+function sendHeight() {
+  var h = document.body.scrollHeight;
+  window.parent.postMessage({ type: 'devblog-height', height: h }, '*');
+}
+// Send on load, on filter change, and whenever fonts finish loading
+sendHeight();
+if (document.fonts) {
+  document.fonts.ready.then(sendHeight);
+}
+window.addEventListener('load', sendHeight);
+</script>
+</body>
+</html>

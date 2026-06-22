@@ -234,6 +234,9 @@
     .footer-bottom { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem; }
     .footer-copy { font-family: var(--font-mono); font-size: 12px; color: var(--text-dim); letter-spacing: 0.05em; }
 
+    /* DEV BLOG iframe auto-resize */
+    #devblog { background: var(--bg2); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); }
+
     /* ANIMATIONS */
     @keyframes fadeUp { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
     .fade-up { opacity: 0; animation: fadeUp 0.6s ease forwards; }
@@ -270,6 +273,7 @@
     <li><a href="#home">Home</a></li>
     <li><a href="#feature">Feature</a></li>
     <li><a href="#play">Games</a></li>
+    <li><a href="#devblog">Dev Blog</a></li>
     <li><a href="#contact">Contact</a></li>
     <li><a href="#play" class="nav-play">▶ Play Free</a></li>
   </ul>
@@ -424,6 +428,22 @@
   </div>
 </section>
 
+<!-- DEV BLOG — content lives in devblog-embed.html, edit that file to add entries -->
+<section id="devblog">
+  <div class="container">
+    <div class="section-label">Studio Updates</div>
+    <h2 class="section-title">Dev Blog</h2>
+    <div class="divider"></div>
+    <iframe
+      id="devblog-frame"
+      src="devblog-embed.html"
+      scrolling="no"
+      frameborder="0"
+      style="width:100%; border:none; display:block; min-height:400px;"
+    ></iframe>
+  </div>
+</section>
+
 <!-- ARCHIVE -->
 <section id="archive">
   <div class="container">
@@ -506,6 +526,7 @@
         <a href="#home">Home</a>
         <a href="#feature">Feature</a>
         <a href="#play">Play Now</a>
+        <a href="#devblog">Dev Blog</a>
         <a href="#archive">Archive</a>
       </div>
       <div class="footer-col">
@@ -528,7 +549,14 @@
   toggle.addEventListener('click', () => links.classList.toggle('open'));
   links.querySelectorAll('a').forEach(a => a.addEventListener('click', () => links.classList.remove('open')));
 
-  // Archive accordion
+  // Auto-resize devblog iframe to fit its content (no scrollbar)
+  window.addEventListener('message', function(e) {
+    if (e.data && e.data.type === 'devblog-height') {
+      var frame = document.getElementById('devblog-frame');
+      if (frame) frame.style.height = e.data.height + 'px';
+    }
+  });
+
   const archiveToggle = document.getElementById('archiveToggle');
   const archiveGrid = document.getElementById('archiveGrid');
   archiveToggle.addEventListener('click', () => {
