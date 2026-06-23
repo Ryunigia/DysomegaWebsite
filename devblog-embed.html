@@ -88,6 +88,16 @@
     }
     .tl-link:hover { opacity: 1; }
 
+    .yt-wrap { margin-top: 12px; position: relative; border-radius: 4px; overflow: hidden; background: #000; cursor: pointer; aspect-ratio: 16/9; }
+    .yt-thumb { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 0.2s; }
+    .yt-wrap:hover .yt-thumb { opacity: 0.75; }
+    .yt-play {
+      position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+      pointer-events: none;
+    }
+    .yt-play svg { width: 56px; height: 56px; filter: drop-shadow(0 2px 8px rgba(0,0,0,0.7)); }
+    .yt-iframe { width: 100%; height: 100%; border: none; display: block; }
+
     @media (max-width: 600px) {
       .tl-spine { left: 0; }
       .tl-date  { display: none; }
@@ -114,12 +124,15 @@
 //  the ENTRIES array below and save the file. That's it.
 //
 //  Fields:
-//    date   — displayed on the left  (e.g. 'Jul 2026')
-//    title  — bold heading of the card
-//    status — 'wip' (amber "IN PROGRESS") or 'done' (teal "FINISHED")
-//    tags   — array of tag strings; first tag sets the dot colour
-//    desc   — short description paragraph
-//    link   — optional URL for a "Read more →" link; '' to hide
+//    date    — displayed on the left  (e.g. 'Jul 2026')
+//    title   — bold heading of the card
+//    status  — 'wip' (amber "IN PROGRESS") or 'done' (teal "SHIPPED")
+//    tags    — array of tag strings; first tag sets the dot colour
+//    desc    — short description paragraph
+//    link    — optional URL for a "Read more →" link; '' to hide
+//    youtube — optional YouTube video ID (the part after ?v=); '' to hide
+//              e.g. for https://www.youtube.com/watch?v=dQw4w9WgXcQ
+//              just put 'dQw4w9WgXcQ'
 // ================================================================
 var ENTRIES = [
   {
@@ -203,6 +216,15 @@ ENTRIES.forEach(function(e) {
   var link = e.link
     ? '<a class="tl-link" href="' + e.link + '" target="_blank" rel="noopener">Read more →</a>'
     : '';
+  var youtube = e.youtube
+    ? '<div class="yt-wrap" data-ytid="' + e.youtube + '">' +
+        '<img class="yt-thumb" src="https://img.youtube.com/vi/' + e.youtube + '/maxresdefault.jpg" alt="Video thumbnail" loading="lazy">' +
+        '<div class="yt-play"><svg viewBox="0 0 68 48" xmlns="http://www.w3.org/2000/svg">' +
+          '<rect width="68" height="48" rx="10" fill="rgba(0,0,0,0.7)"/>' +
+          '<polygon points="26,14 26,34 48,24" fill="#fff"/>' +
+        '</svg></div>' +
+      '</div>'
+    : '';
 
   var div = document.createElement('div');
   div.className = 'tl-entry';
@@ -216,9 +238,25 @@ ENTRIES.forEach(function(e) {
       '</div>' +
       '<div class="tl-tags">' + tags + '</div>' +
       '<p class="tl-desc">' + e.desc + '</p>' +
+      youtube +
       link +
     '</div>';
   wrap.appendChild(div);
+});
+
+// Click-to-load YouTube embeds (avoids loading iframes until user clicks)
+document.getElementById('tlWrap').addEventListener('click', function(e) {
+  var wrap = e.target.closest('.yt-wrap');
+  if (!wrap || wrap.dataset.loaded) return;
+  wrap.dataset.loaded = '1';
+  var id = wrap.dataset.ytid;
+  var iframe = document.createElement('iframe');
+  iframe.className = 'yt-iframe';
+  iframe.src = 'https://www.youtube.com/embed/' + id + '?autoplay=1';
+  iframe.allow = 'accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture';
+  iframe.allowFullscreen = true;
+  wrap.innerHTML = '';
+  wrap.appendChild(iframe);
 });
 
 // Tell parent iframe how tall to be (so no scrollbar appears)
