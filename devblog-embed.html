@@ -243,7 +243,7 @@ ENTRIES.forEach(function(e) {
         '<p class="tl-card-title">' + e.title + '</p>' + badge +
       '</div>' +
       '<div class="tl-tags">' + tags + '</div>' +
-      '<p class="tl-desc">' + e.desc + '</p>' +
+      (e.desc ? '<p class="tl-desc">' + e.desc + '</p>' : '') +
       youtube +
       link +
     '</div>';
