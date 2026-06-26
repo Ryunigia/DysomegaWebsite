@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Water Hole</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;user-select:none;-webkit-user-select:none;}
+html,body{height:100%;overflow:hidden;font-family:system-ui,sans-serif;color:#e8d5a3;touch-action:none;background:#0a0602;}
+#game{display:flex;flex-direction:column;height:100vh;max-width:540px;margin:0 auto;}
+
+/* TOP: game view */
+#arena{height:50vh;position:relative;overflow:hidden;flex-shrink:0;}
+#bgc{position:absolute;inset:0;width:100%;height:100%;}
+#c{position:absolute;inset:0;width:100%;height:100%;touch-action:none;}
+
+/* BOTTOM: UI */
+#hud{height:50vh;background:#0a0602;border-top:2px solid #2a1a06;display:flex;flex-direction:column;overflow:hidden;}
+#statbar{display:flex;justify-content:space-around;align-items:center;padding:8px 6px;background:#080401;border-bottom:1px solid #1e1204;flex-shrink:0;}
+.stat{text-align:center;}
+.slabel{font-size:9px;color:#6a4818;text-transform:uppercase;letter-spacing:.05em;}
+.sval{font-size:16px;font-weight:700;color:#f0c060;line-height:1.1;}
+#tabs{display:flex;border-bottom:1px solid #1a0f03;flex-shrink:0;}
+.tab{flex:1;padding:9px 2px;text-align:center;font-size:11px;font-weight:700;color:#5a4010;cursor:pointer;border-bottom:2px solid transparent;letter-spacing:.04em;text-transform:uppercase;}
+.tab.on{color:#f0c060;border-bottom-color:#f0c060;}
+#tabcont{flex:1;overflow-y:auto;padding:6px 8px;}
+.urow{display:flex;align-items:center;gap:8px;padding:7px 8px;border-radius:7px;background:#0e0902;border:1px solid #1a1004;margin-bottom:5px;cursor:pointer;-webkit-tap-highlight-color:transparent;}
+.urow.bought{border-color:#1c3010;}
+.urow.locked{opacity:.38;cursor:default;}
+.uicon{font-size:22px;width:28px;text-align:center;flex-shrink:0;}
+.uinfo{flex:1;min-width:0;}
+.uname{font-size:12px;font-weight:700;color:#d4a030;}
+.udesc{font-size:10px;color:#604818;margin-top:2px;}
+.ubadge{font-size:10px;color:#3a7030;margin-top:2px;}
+.ucost{font-size:12px;font-weight:700;color:#f0c060;flex-shrink:0;text-align:right;}
+.ucost.maxed{color:#3a6030;}
+#notif{position:absolute;top:6px;left:50%;transform:translateX(-50%);background:rgba(8,18,4,0.94);border:1px solid #3a7015;border-radius:6px;padding:4px 14px;font-size:10px;color:#70d030;opacity:0;transition:opacity .25s;pointer-events:none;white-space:nowrap;z-index:30;}
+#notif.on{opacity:1;}
+#lvlbanner{position:absolute;top:35%;left:50%;transform:translate(-50%,-50%) scale(0);background:rgba(8,5,2,0.96);border:2px solid #f0c060;border-radius:10px;padding:14px 24px;text-align:center;z-index:40;transition:transform .35s cubic-bezier(.34,1.56,.64,1);}
+#lvlbanner.on{transform:translate(-50%,-50%) scale(1);}
+#lvlbanner h2{color:#f0c060;font-size:17px;margin-bottom:4px;}
+#lvlbanner p{color:#a08040;font-size:11px;}
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="arena">
+    <canvas id="bgc"></canvas>
+    <canvas id="c"></canvas>
+    <div id="notif"></div>
+    <div id="lvlbanner"><h2 id="lvltitle"></h2><p id="lvldesc"></p></div>
+  </div>
+  <div id="hud">
+    <div id="statbar">
+      <div class="stat"><div class="slabel">Water</div><div class="sval" id="sw">0</div></div>
+      <div class="stat"><div class="slabel">Overflow</div><div class="sval" id="sov">0%</div></div>
+      <div class="stat"><div class="slabel">Size</div><div class="sval" id="ss">Tiny</div></div>
+      <div class="stat"><div class="slabel">Gold</div><div class="sval" id="sg">0</div></div>
+      <div class="stat"><div class="slabel">L/s</div><div class="sval" id="sr">0</div></div>
+    </div>
+    <div id="tabs">
+      <div class="tab on" data-t="fill">💧 Fill</div>
+      <div class="tab" data-t="collect">🪢 Collect</div>
+      <div class="tab" data-t="loot">✨ Loot</div>
+    </div>
+    <div id="tabcont"></div>
+  </div>
+</div>
+<script>
+const bgc=document.getElementById('bgc'),bgCtx=bgc.getContext('2d');
+const cv=document.getElementById('c'),ctx=cv.getContext('2d');
+const arena=document.getElementById('arena');
+let W,H,CX,CY,GROUND; // GROUND = y coordinate of ground line in canvas
+
+function rsz(){
+  W=arena.clientWidth; H=arena.clientHeight;
+  bgc.width=cv.width=W; bgc.height=cv.height=H;
+  // Hole is centered slightly above middle so there's room for the overflow bar below
+  CX=W/2; CY=H*0.44;
+  // Ground is a flat line that cuts horizontally — objects sit ON this
+  GROUND=CY; // the hole center is at ground level; ground surface is at CY
+  buildBg();
+}
+
+// ── LEVELS ────────────────────────────────────────────
+const LEVELS=[
+  {name:'Puddle',  label:'Tiny',   r:36,  cap:80,    bg:'grass',   desc:'A muddy little hole in a meadow'},
+  {name:'Pit',     label:'Small',  r:58,  cap:350,   bg:'garden',  desc:'A backyard pit with a fence'},
+  {name:'Pond',    label:'Pond',   r:84,  cap:1500,  bg:'suburb',  desc:'A pond among suburban houses'},
+  {name:'Pool',    label:'Pool',   r:112, cap:7000,  bg:'town',    desc:'Flooding the town square'},
+  {name:'Quarry',  label:'Quarry', r:144, cap:35000, bg:'city',    desc:'Swallowing city blocks'},
+  {name:'Lake',    label:'Lake',   r:178, cap:160000,bg:'highway', desc:'A lake crossing the highway'},
+  {name:'Sea',     label:'Sea',    r:210, cap:1e9,   bg:'ocean',   desc:'An inland sea — ships appear'},
+];
+
+const G={
+  water:0,overflow:0,gold:0,tick:0,
+  level:0,clickWater:1,
+  treasures:[],particles:[],floattexts:[],
+  activeTab:'fill',
+};
+
+// ── UPGRADES ──────────────────────────────────────────
+const FILL_UPG=[
+  {id:'click1',name:'Better Bucket', icon:'🪣',desc:'2× water per click',      costG:0,   wpc:2,  wps:0,   count:0,max:1,vis:null},
+  {id:'hose',  name:'Garden Hose',   icon:'🌿',desc:'+1 L/s per hose',          costG:30,  wpc:0,  wps:1,   count:0,max:6,vis:'hose'},
+  {id:'click2',name:'Splash Click',  icon:'💦',desc:'5× water per click',       costG:80,  wpc:5,  wps:0,   count:0,max:1,vis:null},
+  {id:'pump',  name:'Water Pump',    icon:'⚙️',desc:'+6 L/s per pump',          costG:260, wpc:0,  wps:6,   count:0,max:5,vis:'pump'},
+  {id:'click3',name:'Flood Click',   icon:'🌊',desc:'20× water per click',      costG:900, wpc:20, wps:0,   count:0,max:1,vis:null},
+  {id:'truck', name:'Fire Truck',    icon:'🚒',desc:'+35 L/s per truck',        costG:2800,wpc:0,  wps:35,  count:0,max:4,vis:'truck'},
+  {id:'trench',name:'Water Trench',  icon:'🏞️',desc:'+180 L/s, digs a channel', costG:14000,wpc:0, wps:180, count:0,max:3,vis:'trench'},
+  {id:'canal', name:'Canal',         icon:'🌊',desc:'+700 L/s wide canal',      costG:70000,wpc:0, wps:700, count:0,max:2,vis:'canal'},
+  {id:'river', name:'River Tap',     icon:'🏔️',desc:'+4000 L/s river',          costG:350000,wpc:0,wps:4000,count:0,max:2,vis:'river'},
+];
+const COLL_UPG=[
+  {id:'net',   name:'Hand Net',   icon:'🪢',desc:'Auto-collect 1 g/s',   costG:50,   gps:1,   count:0,max:5,vis:'net'},
+  {id:'rod',   name:'Fishing Rod',icon:'🎣',desc:'Auto-collect 4 g/s',   costG:220,  gps:4,   count:0,max:4,vis:'rod'},
+  {id:'rowboat',name:'Row Boat',  icon:'🚣',desc:'Auto-collect 15 g/s',  costG:1100, gps:15,  count:0,max:3,vis:'rowboat'},
+  {id:'speed', name:'Speed Boat', icon:'🛥️',desc:'Auto-collect 70 g/s',  costG:7000, gps:70,  count:0,max:3,vis:'speedboat'},
+  {id:'barge', name:'Barge',      icon:'🚢',desc:'Auto-collect 350 g/s', costG:35000,gps:350, count:0,max:2,vis:'barge'},
+  {id:'sub',   name:'Mini Sub',   icon:'🤿',desc:'Auto-collect 2000 g/s',costG:180000,gps:2000,count:0,max:2,vis:'sub'},
+];
+const LOOT_UPG=[
+  {id:'magnet',name:'Gold Magnet',    icon:'🧲',desc:'All loot worth 2×',     costG:150,  lm:2,lr:1,count:0,max:1},
+  {id:'metal', name:'Metal Detector', icon:'📡',desc:'Spawn treasures 2× faster',costG:420,lm:1,lr:2,count:0,max:1},
+  {id:'diver', name:'Deep Diver',     icon:'🤿',desc:'Rare items surface more',costG:1600, lm:3,lr:1,count:0,max:1},
+  {id:'sonar', name:'Sonar Ping',     icon:'📶',desc:'Spawn 4× faster',       costG:6000, lm:1,lr:4,count:0,max:1},
+  {id:'amp',   name:'Amplifier',      icon:'⚡',desc:'All loot worth 5×',     costG:25000,lm:5,lr:1,count:0,max:1},
+  {id:'oracle',name:'Oracle Stone',   icon:'🔮',desc:'Massive 10× loot boost',costG:120000,lm:10,lr:2,count:0,max:1},
+];
+
+function calcAutoWater(){return FILL_UPG.reduce((a,u)=>a+u.wps*u.count,0);}
+function calcAutoCollect(){return COLL_UPG.reduce((a,u)=>a+u.gps*u.count,0);}
+function calcLootMult(){return LOOT_UPG.reduce((a,u)=>a*Math.pow(u.lm,u.count),1);}
+function calcLootRate(){return LOOT_UPG.reduce((a,u)=>a*Math.pow(u.lr,u.count),1);}
+function holeR(){return LEVELS[G.level].r;}
+function cap(){return LEVELS[G.level].cap;}
+function fmt(n){
+  if(n>=1e9)return(n/1e9).toFixed(2)+'B';
+  if(n>=1e6)return(n/1e6).toFixed(2)+'M';
+  if(n>=1e3)return(n/1e3).toFixed(1)+'k';
+  return Math.floor(n)+'';
+}
+
+// ── RIM SOURCES ───────────────────────────────────────
+let rimSources=[];
+function rebuildRim(){
+  rimSources=[];
+  for(const u of FILL_UPG){
+    if(!u.vis||u.count===0)continue;
+    for(let i=0;i<u.count;i++) rimSources.push({type:u.vis,wps:u.wps,anim:Math.random()*10});
+  }
+  rimSources.forEach((s,i)=>{ s.angle=(i/rimSources.length)*Math.PI*2 - Math.PI/2; });
+}
+
+// ── COLLECTOR ENTITIES ────────────────────────────────
+let collectors=[];
+function rebuildCollectors(){
+  collectors=[];
+  for(const u of COLL_UPG){
+    if(!u.vis||u.count===0)continue;
+    for(let i=0;i<u.count;i++){
+      const a=(i/u.count)*Math.PI*2+Math.random();
+      const orb=holeR()*(0.35+Math.random()*0.3);
+      collectors.push({type:u.vis,gps:u.gps,angle:a,speed:(Math.random()>.5?1:-1)*(0.25+Math.random()*0.35),anim:Math.random()*10,orb});
+    }
+  }
+}
+
+// ── BACKGROUND ────────────────────────────────────────
+// Everything is drawn relative to GROUND (CY).
+// Objects sit on the ground: their "feet" are at y = GROUND, they grow upward.
+// The hole is a circle centered at (CX, GROUND), so the top half shows above ground.
+
+let bgObjs=[];
+function buildBg(){
+  bgObjs=[];
+  const lv=G.level, r=holeR();
+  const hw=W*0.5, hh=H*0.5;
+  // Helper: place object at ground level at a certain distance from center
+  // angle=direction, dist=pixels from CX on ground plane
+  // We distribute objects in a semicircle above ground (angle -PI to 0) and scatter on flat ground
+  function place(minD,maxD){
+    // random position on the ground NOT inside the hole
+    let tries=0, x,y;
+    do {
+      x=CX+(Math.random()-0.5)*W*0.92;
+      y=GROUND; // sits on ground
+      tries++;
+    } while(Math.hypot(x-CX,y-GROUND)<r+18 && tries<40);
+    return {x,y};
+  }
+  function placeRing(minD,maxD){
+    let angle=Math.random()*Math.PI*2;
+    let d=minD+Math.random()*(maxD-minD);
+    return {x:CX+Math.cos(angle)*d, y:GROUND+Math.sin(angle)*d*0.28};
+    // y offset: objects further away appear slightly above ground (perspective)
+  }
+
+  // Always: grass tufts on the ground
+  for(let i=0;i<35;i++){
+    const p=place(r+20,hw*0.9);
+    bgObjs.push({t:'grass',x:p.x,y:GROUND,sz:6+Math.random()*10,g:'#4a8a28'});
+  }
+  for(let i=0;i<16;i++){
+    const p=place(r+15,hw*0.85);
+    bgObjs.push({t:'flower',x:p.x,y:GROUND,col:['#ffcc00','#ff6688','#dd44ff','#ff8822'][i%4]});
+  }
+
+  if(lv>=1){
+    // Fence posts evenly around the hole at a fixed radius on the ground
+    const fenceR=r+28;
+    for(let i=0;i<20;i++){
+      const a=(i/20)*Math.PI*2;
+      const fx=CX+Math.cos(a)*fenceR, fy=GROUND+Math.sin(a)*fenceR*0.22;
+      if(Math.hypot(fx-CX,fy-GROUND)<r+10) continue;
+      bgObjs.push({t:'fence',x:fx,y:fy});
+    }
+    for(let i=0;i<6;i++){
+      const p=place(r+55, hw*0.88);
+      bgObjs.push({t:'tree',x:p.x,y:GROUND,sz:18+Math.random()*12});
+    }
+    bgObjs.push({t:'shed',x:CX-W*0.3,y:GROUND});
+  }
+
+  if(lv>=2){
+    for(let i=0;i<5;i++){
+      const p=place(r+65, hw*0.9);
+      bgObjs.push({t:'house',x:p.x,y:GROUND,col:['#d4a070','#b05040','#9090a0','#b0c080'][i%4]});
+    }
+    // Road: a horizontal stripe across the scene
+    bgObjs.push({t:'road',x1:0,x2:W,y:GROUND+H*0.08});
+    // Road: vertical
+    bgObjs.push({t:'road',x1:CX+W*0.32,x2:CX+W*0.32,y1:0,y2:H,vert:true});
+  }
+
+  if(lv>=3){
+    for(let i=0;i<7;i++){
+      const p=place(r+70, hw*0.9);
+      bgObjs.push({t:'building',x:p.x,y:GROUND,bh:28+Math.random()*30,col:['#708090','#607080','#9080a0'][i%3]});
+    }
+    for(let i=0;i<4;i++){
+      const rx=CX+(Math.random()-0.5)*W*0.85;
+      bgObjs.push({t:'car',x:rx,y:GROUND+H*0.08,col:['#e03020','#2050e0','#30a030','#e0d020'][i%4]});
+    }
+  }
+
+  if(lv>=4){
+    for(let i=0;i<8;i++){
+      const p=place(r+75, hw*0.92);
+      bgObjs.push({t:'skyscraper',x:p.x,y:GROUND,bh:50+Math.random()*55,col:['#4060a0','#506070','#3050a0'][i%3]});
+    }
+    for(let x=-1;x<=1;x++){
+      bgObjs.push({t:'road',x1:0,x2:W,y:GROUND+H*(0.08+x*0.13)});
+    }
+  }
+
+  if(lv>=5){
+    for(let i=0;i<3;i++){
+      const p=place(r+80, hw*0.9);
+      bgObjs.push({t:'turbine',x:p.x,y:GROUND,rot:Math.random()*Math.PI*2});
+    }
+    bgObjs.push({t:'highway',x1:0,x2:W,y:GROUND-H*0.12,w:22});
+    for(let i=0;i<3;i++){
+      const rx=CX+(Math.random()-0.5)*W*0.8;
+      bgObjs.push({t:'truck',x:rx,y:GROUND-H*0.12});
+    }
+  }
+
+  if(lv>=6){
+    for(let i=0;i<4;i++){
+      const a=(i/4)*Math.PI*2;
+      const d=holeR()*0.88+30+Math.random()*20;
+      bgObjs.push({t:'ship',x:CX+Math.cos(a)*d,y:GROUND+Math.sin(a)*d*0.2});
+    }
+    bgObjs.push({t:'lighthouse',x:CX+W*0.36,y:GROUND});
+    for(let i=0;i<5;i++){
+      bgObjs.push({t:'cloud',x:20+Math.random()*(W-40),y:H*0.05+Math.random()*H*0.22,sz:22+Math.random()*35});
+    }
+  }
+}
+
+function drawBg(time){
+  // Sky gradient
+  const skyColors=[
+    ['#8fd0f0','#c8eaf8'],['#7cc0e8','#b8e0f5'],['#88c8f0','#ccecfc'],
+    ['#b0c8d8','#dce8f0'],['#9098b8','#c0c8d8'],['#8090b0','#b0c0d0'],['#4060a0','#80a8d8']
+  ];
+  const [s1,s2]=skyColors[Math.min(G.level,skyColors.length-1)];
+  const skyGrad=bgCtx.createLinearGradient(0,0,0,GROUND);
+  skyGrad.addColorStop(0,s2); skyGrad.addColorStop(1,s1);
+  bgCtx.fillStyle=skyGrad; bgCtx.fillRect(0,0,W,GROUND);
+
+  // Ground gradient — flat earth below hole center
+  const groundColors=[
+    ['#5a8a30','#7aaa48'],['#4a7828','#6a9838'],['#3a6820','#5a8830'],
+    ['#c0b070','#d8c888'],['#606878','#808898'],['#505870','#707888'],['#203060','#304878']
+  ];
+  const [g1,g2]=groundColors[Math.min(G.level,groundColors.length-1)];
+  const gGrad=bgCtx.createLinearGradient(0,GROUND,0,H);
+  gGrad.addColorStop(0,g2); gGrad.addColorStop(1,g1);
+  bgCtx.fillStyle=gGrad; bgCtx.fillRect(0,GROUND,W,H-GROUND);
+
+  // Horizon line
+  bgCtx.strokeStyle='rgba(0,0,0,0.15)'; bgCtx.lineWidth=1.5;
+  bgCtx.beginPath(); bgCtx.moveTo(0,GROUND); bgCtx.lineTo(W,GROUND); bgCtx.stroke();
+
+  const r=holeR();
+
+  // Draw bg objects — sorted so things further "back" (lower y for above-ground objects) draw first
+  // We separate above-ground and below-ground objects
+  for(const o of bgObjs){
+    // Skip if inside hole (with small margin)
+    const dx=o.x-CX, dy=(o.y||GROUND)-GROUND;
+    if(o.t!=='road'&&o.t!=='highway'&&o.t!=='cloud'&&o.t!=='ship'){
+      if(dx*dx<(r+16)*(r+16) && Math.abs(o.x-CX)<r+16) {/* might clip */}
+    }
+
+    bgCtx.save();
+    const gy=o.y||GROUND; // ground y for this object
+
+    if(o.t==='grass'){
+      // Tuft of grass — stems grow UP from ground
+      bgCtx.fillStyle=o.g||'#4a8a28';
+      bgCtx.beginPath();
+      bgCtx.moveTo(o.x, gy);
+      bgCtx.lineTo(o.x-o.sz*0.3, gy-o.sz);
+      bgCtx.lineTo(o.x, gy-o.sz*0.5);
+      bgCtx.lineTo(o.x+o.sz*0.3, gy-o.sz);
+      bgCtx.closePath(); bgCtx.fill();
+    }
+    else if(o.t==='flower'){
+      bgCtx.fillStyle='#3a7020';
+      bgCtx.fillRect(o.x-1,gy-12,2,12); // stem
+      bgCtx.fillStyle=o.col;
+      bgCtx.beginPath(); bgCtx.arc(o.x,gy-13,4,0,Math.PI*2); bgCtx.fill();
+      bgCtx.fillStyle='#ffff88';
+      bgCtx.beginPath(); bgCtx.arc(o.x,gy-13,2,0,Math.PI*2); bgCtx.fill();
+    }
+    else if(o.t==='fence'){
+      // Fence post: vertical plank with horizontal rail
+      bgCtx.fillStyle='#c8a060';
+      bgCtx.fillRect(o.x-2, gy-18, 4, 18); // post grows up from ground
+      bgCtx.fillRect(o.x-8, gy-13, 16, 3); // horizontal rail
+      // pointed top
+      bgCtx.beginPath();bgCtx.moveTo(o.x-2,gy-18);bgCtx.lineTo(o.x,gy-23);bgCtx.lineTo(o.x+2,gy-18);bgCtx.fill();
+    }
+    else if(o.t==='shed'){
+      // Shed sitting on ground
+      const sw=34, sh=24;
+      bgCtx.fillStyle='#8a6030';
+      bgCtx.fillRect(o.x-sw/2, gy-sh, sw, sh);
+      // Roof
+      bgCtx.fillStyle='#a04020';
+      bgCtx.beginPath();bgCtx.moveTo(o.x-sw/2-4,gy-sh);bgCtx.lineTo(o.x,gy-sh-16);bgCtx.lineTo(o.x+sw/2+4,gy-sh);bgCtx.closePath();bgCtx.fill();
+      // Door
+      bgCtx.fillStyle='#604010';bgCtx.fillRect(o.x-6,gy-14,12,14);
+      // Window
+      bgCtx.fillStyle='rgba(150,210,240,0.7)';bgCtx.fillRect(o.x-sw/2+4,gy-sh+5,10,8);
+    }
+    else if(o.t==='tree'){
+      // Trunk from ground up
+      bgCtx.fillStyle='#6a4020';
+      bgCtx.fillRect(o.x-4,gy-o.sz*0.45,8,o.sz*0.45);
+      // Foliage layers
+      bgCtx.fillStyle='#286018';
+      bgCtx.beginPath();bgCtx.arc(o.x,gy-o.sz*0.6,o.sz*0.5,0,Math.PI*2);bgCtx.fill();
+      bgCtx.fillStyle='#38801e';
+      bgCtx.beginPath();bgCtx.arc(o.x-o.sz*0.2,gy-o.sz*0.75,o.sz*0.35,0,Math.PI*2);bgCtx.fill();
+      bgCtx.beginPath();bgCtx.arc(o.x+o.sz*0.18,gy-o.sz*0.78,o.sz*0.32,0,Math.PI*2);bgCtx.fill();
+    }
+    else if(o.t==='house'){
+      const hw2=20, hh2=24;
+      bgCtx.fillStyle=o.col;
+      bgCtx.fillRect(o.x-hw2,gy-hh2,hw2*2,hh2);
+      // Roof
+      bgCtx.fillStyle='#a03828';
+      bgCtx.beginPath();bgCtx.moveTo(o.x-hw2-3,gy-hh2);bgCtx.lineTo(o.x,gy-hh2-18);bgCtx.lineTo(o.x+hw2+3,gy-hh2);bgCtx.closePath();bgCtx.fill();
+      // Door
+      bgCtx.fillStyle='#704020';bgCtx.fillRect(o.x-5,gy-14,10,14);
+      // Windows
+      bgCtx.fillStyle='rgba(160,220,255,0.75)';
+      bgCtx.fillRect(o.x-hw2+4,gy-hh2+5,10,9);
+      bgCtx.fillRect(o.x+hw2-14,gy-hh2+5,10,9);
+      // Window cross
+      bgCtx.fillStyle='rgba(0,0,0,0.2)';
+      bgCtx.fillRect(o.x-hw2+8,gy-hh2+5,1,9);bgCtx.fillRect(o.x-hw2+4,gy-hh2+9,10,1);
+    }
+    else if(o.t==='road'){
+      if(o.vert){
+        bgCtx.fillStyle='#444'; bgCtx.fillRect(o.x1-8,0,16,H);
+        bgCtx.setLineDash([14,10]); bgCtx.strokeStyle='#f0e040'; bgCtx.lineWidth=1.5;
+        bgCtx.beginPath();bgCtx.moveTo(o.x1,0);bgCtx.lineTo(o.x1,H);bgCtx.stroke();
+        bgCtx.setLineDash([]);
+      } else {
+        bgCtx.fillStyle='#444'; bgCtx.fillRect(0,o.y-6,W,12);
+        bgCtx.setLineDash([14,10]); bgCtx.strokeStyle='#f0e040'; bgCtx.lineWidth=1.5;
+        bgCtx.beginPath();bgCtx.moveTo(0,o.y);bgCtx.lineTo(W,o.y);bgCtx.stroke();
+        bgCtx.setLineDash([]);
+      }
+    }
+    else if(o.t==='highway'){
+      bgCtx.fillStyle='#555'; bgCtx.fillRect(0,o.y-o.w/2,W,o.w);
+      bgCtx.setLineDash([18,12]); bgCtx.strokeStyle='#fff'; bgCtx.lineWidth=2;
+      bgCtx.beginPath();bgCtx.moveTo(0,o.y);bgCtx.lineTo(W,o.y);bgCtx.stroke();
+      bgCtx.strokeStyle='#f0e040'; bgCtx.lineWidth=1;
+      bgCtx.beginPath();bgCtx.moveTo(0,o.y-o.w/2);bgCtx.lineTo(W,o.y-o.w/2);bgCtx.stroke();
+      bgCtx.beginPath();bgCtx.moveTo(0,o.y+o.w/2);bgCtx.lineTo(W,o.y+o.w/2);bgCtx.stroke();
+      bgCtx.setLineDash([]);
+    }
+    else if(o.t==='car'){
+      bgCtx.fillStyle=o.col;bgCtx.beginPath();bgCtx.roundRect(o.x-11,o.y-8,22,8,2);bgCtx.fill();
+      bgCtx.fillStyle='rgba(180,225,255,0.8)';bgCtx.fillRect(o.x-7,o.y-7,14,5);
+      bgCtx.fillStyle='#111';
+      bgCtx.beginPath();bgCtx.arc(o.x-6,o.y,3,0,Math.PI*2);bgCtx.fill();
+      bgCtx.beginPath();bgCtx.arc(o.x+6,o.y,3,0,Math.PI*2);bgCtx.fill();
+    }
+    else if(o.t==='truck'){
+      bgCtx.fillStyle='#909090';bgCtx.fillRect(o.x-22,o.y-10,44,10);
+      bgCtx.fillStyle='#707070';bgCtx.fillRect(o.x+16,o.y-14,8,14);
+      bgCtx.fillStyle='rgba(180,225,255,0.8)';bgCtx.fillRect(o.x+17,o.y-13,6,5);
+      bgCtx.fillStyle='#111';
+      bgCtx.beginPath();bgCtx.arc(o.x-14,o.y,4,0,Math.PI*2);bgCtx.fill();
+      bgCtx.beginPath();bgCtx.arc(o.x+14,o.y,4,0,Math.PI*2);bgCtx.fill();
+    }
+    else if(o.t==='building'){
+      bgCtx.fillStyle=o.col;bgCtx.fillRect(o.x-16,gy-o.bh,32,o.bh);
+      // Glass tint
+      bgCtx.fillStyle='rgba(150,200,255,0.1)';bgCtx.fillRect(o.x-16,gy-o.bh,32,o.bh);
+      // Windows grid
+      bgCtx.fillStyle='rgba(255,240,120,0.55)';
+      for(let wy=gy-o.bh+6;wy<gy-4;wy+=9){
+        for(let wx=o.x-12;wx<o.x+12;wx+=8){
+          if(Math.random()>0.3) bgCtx.fillRect(wx,wy,5,6);
+        }
+      }
+    }
+    else if(o.t==='skyscraper'){
+      bgCtx.fillStyle=o.col;bgCtx.fillRect(o.x-20,gy-o.bh,40,o.bh);
+      bgCtx.fillStyle='rgba(140,200,255,0.12)';bgCtx.fillRect(o.x-20,gy-o.bh,40,o.bh);
+      bgCtx.fillStyle='rgba(255,240,120,0.65)';
+      for(let wy=gy-o.bh+5;wy<gy-4;wy+=8){
+        for(let wx=o.x-16;wx<o.x+16;wx+=7){
+          if(Math.random()>0.2) bgCtx.fillRect(wx,wy,4,5);
+        }
+      }
+      // Antenna
+      bgCtx.strokeStyle='#a0b0c0';bgCtx.lineWidth=2;
+      bgCtx.beginPath();bgCtx.moveTo(o.x,gy-o.bh);bgCtx.lineTo(o.x,gy-o.bh-18);bgCtx.stroke();
+      bgCtx.fillStyle='#e04040';bgCtx.beginPath();bgCtx.arc(o.x,gy-o.bh-18,2.5,0,Math.PI*2);bgCtx.fill();
+    }
+    else if(o.t==='turbine'){
+      bgCtx.strokeStyle='#c0c0c0';bgCtx.lineWidth=3;
+      bgCtx.beginPath();bgCtx.moveTo(o.x,gy);bgCtx.lineTo(o.x,gy-48);bgCtx.stroke();
+      for(let b=0;b<3;b++){
+        const ba=o.rot+b*(Math.PI*2/3);
+        bgCtx.strokeStyle='#d8d8d8';bgCtx.lineWidth=2;
+        bgCtx.beginPath();bgCtx.moveTo(o.x,gy-48);
+        bgCtx.lineTo(o.x+Math.cos(ba)*22,gy-48+Math.sin(ba)*22);bgCtx.stroke();
+      }
+      bgCtx.fillStyle='#aaa';bgCtx.beginPath();bgCtx.arc(o.x,gy-48,3,0,Math.PI*2);bgCtx.fill();
+    }
+    else if(o.t==='ship'){
+      bgCtx.fillStyle='#404850';bgCtx.fillRect(o.x-24,o.y-7,48,10);
+      bgCtx.beginPath();bgCtx.moveTo(o.x-24,o.y+3);bgCtx.lineTo(o.x-28,o.y+7);bgCtx.lineTo(o.x+28,o.y+7);bgCtx.lineTo(o.x+24,o.y+3);bgCtx.closePath();bgCtx.fill();
+      bgCtx.fillStyle='#303840';bgCtx.fillRect(o.x-12,o.y-16,22,10);
+      bgCtx.strokeStyle='#303840';bgCtx.lineWidth=1.5;
+      bgCtx.beginPath();bgCtx.moveTo(o.x,o.y-16);bgCtx.lineTo(o.x,o.y-32);bgCtx.stroke();
+      bgCtx.fillStyle='#e84020';bgCtx.fillRect(o.x-10,o.y-15,5,9);
+    }
+    else if(o.t==='lighthouse'){
+      // Sits on ground
+      bgCtx.fillStyle='#e0e0e0';bgCtx.fillRect(o.x-8,gy-52,16,52);
+      bgCtx.fillStyle='#e83020';
+      for(let s=0;s<5;s++) bgCtx.fillRect(o.x-8,gy-52+s*10,16,5);
+      bgCtx.fillStyle='#f8f040';bgCtx.fillRect(o.x-9,gy-56,18,7);
+      bgCtx.fillStyle='#404040';bgCtx.fillRect(o.x-11,gy,22,8);
+    }
+    else if(o.t==='cloud'){
+      bgCtx.fillStyle='rgba(255,255,255,0.82)';
+      bgCtx.beginPath();bgCtx.arc(o.x,o.y,o.sz*0.55,0,Math.PI*2);bgCtx.fill();
+      bgCtx.beginPath();bgCtx.arc(o.x+o.sz*0.45,o.y+4,o.sz*0.4,0,Math.PI*2);bgCtx.fill();
+      bgCtx.beginPath();bgCtx.arc(o.x-o.sz*0.4,o.y+5,o.sz*0.35,0,Math.PI*2);bgCtx.fill();
+    }
+    bgCtx.restore();
+  }
+
+  // Context label bottom left of game view
+  bgCtx.fillStyle='rgba(255,255,255,0.28)';bgCtx.font='10px sans-serif';bgCtx.textAlign='left';
+  bgCtx.fillText(LEVELS[G.level].desc,8,H-8);
+}
+
+// ── TREASURE ──────────────────────────────────────────
+const TREASY=[
+  {e:'🪙',base:4, rare:false,w:50},{e:'💎',base:20,rare:true, w:10},
+  {e:'🏺',base:8, rare:false,w:30},{e:'⚱️',base:6, rare:false,w:35},
+  {e:'🔮',base:32,rare:true, w:5}, {e:'🪝',base:3, rare:false,w:45},
+  {e:'👑',base:65,rare:true, w:3}, {e:'🧿',base:12,rare:false,w:20},
+];
+function pickT(){
+  const pool=TREASY.filter(t=>!t.rare||Math.random()<0.2+G.level*0.05);
+  const tot=pool.reduce((a,t)=>a+t.w,0);let rv=Math.random()*tot;
+  for(const t of pool){rv-=t.w;if(rv<=0)return t;} return pool[0];
+}
+
+let lastSpawn=0;
+function maybeSpawn(dt){
+  const maxT=3+G.level*2;
+  if(G.treasures.length>=maxT||G.water<8)return;
+  const interval=Math.max(0.5,3.2/calcLootRate());
+  lastSpawn+=dt; if(lastSpawn<interval)return; lastSpawn=0;
+  const r=holeR()*0.74, a=Math.random()*Math.PI*2, d=Math.random()*r;
+  const t=pickT();
+  G.treasures.push({e:t.e,base:t.base,rare:t.rare,
+    x:CX+Math.cos(a)*d,y:CY+Math.sin(a)*d,
+    vx:(Math.random()-.5)*0.35,vy:(Math.random()-.5)*0.35,
+    bob:Math.random()*10,id:Math.random()});
+}
+
+let cAcc=0;
+function autoCollect(dt){
+  const ac=calcAutoCollect();
+  if(ac<=0||G.treasures.length===0)return;
+  cAcc+=dt*ac;
+  while(cAcc>0&&G.treasures.length>0){
+    const t=G.treasures[0];
+    const val=Math.max(1,Math.round(t.base*calcLootMult()*(1+G.level)));
+    G.gold+=val; spawnFT('+'+fmt(val)+'g',t.x,t.y-12,'#f0c060');
+    G.treasures.shift(); cAcc-=val;
+  }
+}
+
+// ── OVERFLOW / LEVEL UP ───────────────────────────────
+let lvlTimer=0;
+function checkOverflow(){
+  if(G.level>=LEVELS.length-1) return;
+  if(G.water>=cap()){
+    G.overflow+=G.water-cap(); G.water=cap();
+    if(G.overflow>=cap()){
+      G.overflow=0; G.water=0; G.level++;
+      G.treasures=[];
+      rebuildRim(); rebuildCollectors(); buildBg();
+      const lv=LEVELS[G.level];
+      document.getElementById('lvltitle').textContent='Hole Expanded!';
+      document.getElementById('lvldesc').textContent=lv.desc;
+      document.getElementById('lvlbanner').classList.add('on');
+      lvlTimer=3;
+      notify('Now a '+lv.name+'!');
+    }
+  }
+}
+
+// ── PARTICLES / FLOAT TEXT ────────────────────────────
+function spawnFT(txt,x,y,col){G.floattexts.push({txt,x,y,life:1,col,vy:-1.1});}
+function spawnP(x,y,col){G.particles.push({x,y,vx:(Math.random()-.5)*2.5,vy:-1.5-Math.random()*2,life:1,col,sz:2+Math.random()*3});}
+
+// ── DRAW HOLE CANVAS ──────────────────────────────────
+let time=0;
+function drawHole(){
+  ctx.clearRect(0,0,W,H);
+  const r=holeR();
+  const fr=Math.min(G.water/Math.max(cap(),1),1);
+  const ovfr=Math.min(G.overflow/Math.max(cap(),1),1);
+
+  // Rim shadow
+  const rimG=ctx.createRadialGradient(CX,CY,r*0.88,CX,CY,r+24);
+  rimG.addColorStop(0,'rgba(80,45,10,0.9)');
+  rimG.addColorStop(1,'rgba(30,15,4,0)');
+  ctx.beginPath();ctx.arc(CX,CY,r+24,0,Math.PI*2);ctx.fillStyle=rimG;ctx.fill();
+
+  // Hole
+  const dG=ctx.createRadialGradient(CX,CY,0,CX,CY,r);
+  dG.addColorStop(0,'#120900');dG.addColorStop(0.8,'#0a0600');dG.addColorStop(1,'#040200');
+  ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.fillStyle=dG;ctx.fill();
+
+  // Water
+  if(fr>0.01){
+    ctx.save();ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.clip();
+    const wTop=CY+r-fr*r*2; const wh=3+fr*12;
+    ctx.beginPath();ctx.moveTo(CX-r,wTop);
+    for(let x=-r;x<=r;x+=3){
+      const wy=wTop+Math.sin((x/26)+time*2.3)*wh*0.5+Math.sin((x/15)+time*1.5)*wh*0.28;
+      ctx.lineTo(CX+x,wy);
+    }
+    ctx.lineTo(CX+r,CY+r+4);ctx.lineTo(CX-r,CY+r+4);ctx.closePath();
+    const wG=ctx.createLinearGradient(0,wTop,0,CY+r);
+    wG.addColorStop(0,`rgba(55,175,255,${0.55+fr*0.32})`);
+    wG.addColorStop(0.35,`rgba(25,112,192,${0.7+fr*0.2})`);
+    wG.addColorStop(1,'rgba(8,48,105,0.94)');
+    ctx.fillStyle=wG;ctx.fill();
+    // shimmer
+    if(fr>0.1){
+      ctx.globalAlpha=0.13+fr*0.12;
+      for(let i=0;i<5;i++){
+        const sx=CX-r*0.5+Math.sin(time*0.65+i*1.4)*r*0.48;
+        ctx.beginPath();ctx.ellipse(sx,wTop+3+i*4,18+i*4,2.5,0,0,Math.PI*2);
+        ctx.fillStyle='rgba(210,245,255,1)';ctx.fill();
+      }
+      ctx.globalAlpha=1;
+    }
+    ctx.restore();
+  }
+
+  // Rim edge
+  ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);
+  ctx.strokeStyle='rgba(160,100,40,0.65)';ctx.lineWidth=3;ctx.stroke();
+
+  // Rim sources
+  for(const s of rimSources){
+    const sx=CX+Math.cos(s.angle)*(r+11), sy=CY+Math.sin(s.angle)*(r+11);
+    ctx.save();ctx.translate(sx,sy);
+    if(s.type==='truck'){
+      ctx.font='14px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🚒',0,0);
+    } else if(['canal','trench','river'].includes(s.type)){
+      ctx.restore();
+      const ex=CX+Math.cos(s.angle)*(r*0.52), ey=CY+Math.sin(s.angle)*(r*0.52);
+      ctx.strokeStyle=s.type==='canal'?'#1858b0':s.type==='river'?'#1070c0':'#7a4810';
+      ctx.lineWidth=s.type==='river'?8:5; ctx.lineCap='round';
+      ctx.beginPath();ctx.moveTo(sx,sy);ctx.lineTo(ex,ey);ctx.stroke();
+      for(let d=0;d<5;d++){
+        const t2=((time*1.8+d*0.2)%1);
+        const fx=sx+(ex-sx)*t2, fy=sy+(ey-sy)*t2;
+        ctx.beginPath();ctx.arc(fx,fy,2.5,0,Math.PI*2);
+        ctx.fillStyle='rgba(80,190,255,0.85)';ctx.fill();
+      }
+      continue;
+    } else {
+      ctx.beginPath();ctx.arc(0,0,s.type==='pump'?7:5,0,Math.PI*2);
+      ctx.fillStyle=s.type==='pump'?'#888':'#38a020';ctx.fill();
+    }
+    if(fr>0.03){
+      const ex=CX+Math.cos(s.angle)*(r*0.58), ey=CY+Math.sin(s.angle)*(r*0.58);
+      for(let d=0;d<4;d++){
+        const t2=((time*2.2+d*0.25)%1);
+        ctx.beginPath();ctx.arc((ex-sx)*t2,(ey-sy)*t2,3-t2*1.5,0,Math.PI*2);
+        ctx.fillStyle=`rgba(80,190,255,${0.9-t2*0.5})`;ctx.fill();
+      }
+    }
+    ctx.restore();
+  }
+
+  // Collectors on water
+  if(fr>0.06){
+    ctx.save();ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.clip();
+    for(const col of collectors){
+      col.anim+=0.016; col.angle+=col.speed*0.016;
+      const cr=Math.min(col.orb,r*0.78);
+      const cx2=CX+Math.cos(col.angle)*cr, cy2=CY+Math.sin(col.angle)*cr;
+      const wTop2=CY+r-fr*r*2;
+      const cy3=Math.max(cy2,wTop2+8);
+      ctx.save();ctx.translate(cx2, cy3+Math.sin(col.anim*2)*2);
+      if(['rowboat','speedboat','barge'].includes(col.type)){
+        const bw=col.type==='barge'?26:col.type==='speedboat'?18:14;
+        ctx.beginPath();ctx.ellipse(0,0,bw,5,0,0,Math.PI*2);
+        ctx.fillStyle=col.type==='barge'?'#607080':col.type==='speedboat'?'#d03010':'#8a5030';ctx.fill();
+        ctx.font=col.type==='barge'?'16px serif':'12px serif';
+        ctx.textAlign='center';ctx.textBaseline='middle';
+        ctx.fillText(col.type==='barge'?'🚢':col.type==='speedboat'?'🛥️':'🚣',0,-5);
+      } else if(col.type==='sub'){
+        ctx.font='13px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🤿',0,0);
+      } else if(col.type==='net'){
+        ctx.beginPath();ctx.arc(0,0,7,0,Math.PI*2);
+        ctx.strokeStyle='rgba(200,160,30,0.9)';ctx.lineWidth=1.5;ctx.stroke();
+        ctx.beginPath();ctx.moveTo(-7,0);ctx.lineTo(7,0);ctx.moveTo(0,-7);ctx.lineTo(0,7);
+        ctx.strokeStyle='rgba(200,160,30,0.4)';ctx.lineWidth=1;ctx.stroke();
+      } else if(col.type==='rod'){
+        ctx.font='12px serif';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('🎣',0,0);
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Treasures
+  if(fr>0.04){
+    ctx.save();ctx.beginPath();ctx.arc(CX,CY,r,0,Math.PI*2);ctx.clip();
+    for(const t of G.treasures){
+      t.x+=t.vx; t.y+=t.vy;
+      const dx=t.x-CX, dy=t.y-CY, dist=Math.hypot(dx,dy);
+      if(dist>r*0.82){t.vx-=dx/dist*0.6;t.vy-=dy/dist*0.6;}
+      t.vx*=0.98; t.vy*=0.98;
+      const bob=Math.sin(time*2.1+t.bob)*3.5;
+      const wTop3=CY+r-fr*r*2;
+      if(t.y+bob<wTop3+5) t.vy+=0.12;
+      ctx.save(); ctx.translate(t.x,t.y+bob);
+      if(t.rare){ctx.shadowColor='rgba(255,220,50,0.9)';ctx.shadowBlur=12;}
+      ctx.font=`${14+G.level}px serif`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(t.e,0,0); ctx.restore();
+    }
+    ctx.restore();
+  }
+
+  // Particles
+  for(let i=G.particles.length-1;i>=0;i--){
+    const p=G.particles[i];p.x+=p.vx;p.y+=p.vy;p.vy+=0.09;p.life-=0.035;
+    if(p.life<=0){G.particles.splice(i,1);continue;}
+    ctx.globalAlpha=p.life;ctx.beginPath();ctx.arc(p.x,p.y,p.sz,0,Math.PI*2);
+    ctx.fillStyle=p.col;ctx.fill();
+  }
+  ctx.globalAlpha=1;
+  for(let i=G.floattexts.length-1;i>=0;i--){
+    const f=G.floattexts[i];f.y+=f.vy;f.life-=0.022;
+    if(f.life<=0){G.floattexts.splice(i,1);continue;}
+    ctx.globalAlpha=Math.min(f.life*2,1);
+    ctx.fillStyle=f.col;ctx.font='bold 12px sans-serif';ctx.textAlign='center';
+    ctx.fillText(f.txt,f.x,f.y);
+  }
+  ctx.globalAlpha=1;
+
+  // Overflow progress bar
+  const bw=r*1.8,bh=7,bx=CX-bw/2,by=CY+r+16;
+  ctx.fillStyle='rgba(0,0,0,0.55)';ctx.beginPath();ctx.roundRect(bx,by,bw,bh,3);ctx.fill();
+  if(ovfr>0){
+    const og=ctx.createLinearGradient(bx,0,bx+bw,0);
+    og.addColorStop(0,'#1878d0');og.addColorStop(0.6,'#38d0ff');og.addColorStop(1,'#58ffcc');
+    ctx.fillStyle=og;ctx.beginPath();ctx.roundRect(bx,by,bw*ovfr,bh,3);ctx.fill();
+  }
+  ctx.strokeStyle='rgba(80,50,10,0.5)';ctx.lineWidth=1;
+  ctx.beginPath();ctx.roundRect(bx,by,bw,bh,3);ctx.stroke();
+  ctx.fillStyle='rgba(255,255,255,0.32)';ctx.font='9px sans-serif';ctx.textAlign='center';
+  if(G.level<LEVELS.length-1)
+    ctx.fillText(`Overflow to expand — ${Math.floor(ovfr*100)}%`,CX,by+bh+11);
+  else ctx.fillText('Maximum size!',CX,by+bh+11);
+
+  // Hint
+  if(calcAutoWater()<0.5&&G.water<6){
+    ctx.fillStyle='rgba(255,200,80,0.65)';ctx.font='11px sans-serif';ctx.textAlign='center';
+    ctx.fillText('Tap the hole to pour water!',CX,CY+r+46);
+  }
+}
+
+// ── INPUT ─────────────────────────────────────────────
+function clickAt(ex,ey){
+  const rect=cv.getBoundingClientRect();
+  const x=(ex-rect.left)*(W/rect.width), y=(ey-rect.top)*(H/rect.height);
+  for(let i=G.treasures.length-1;i>=0;i--){
+    const t=G.treasures[i];
+    if(Math.hypot(t.x-x,t.y-y)<22){
+      const val=Math.max(1,Math.round(t.base*calcLootMult()*(1+G.level)));
+      G.gold+=val; spawnFT('+'+fmt(val)+'g',t.x,t.y-12,'#f0c060');
+      for(let p=0;p<6;p++) spawnP(t.x,t.y,'#f0c060');
+      G.treasures.splice(i,1); updateUI(); return;
+    }
+  }
+  const dx=x-CX, dy=y-CY;
+  if(dx*dx+dy*dy<(holeR()+14)*(holeR()+14)){
+    G.water+=G.clickWater;
+    spawnFT('+'+fmt(G.clickWater)+'L',x,y-14,'#60c0ff');
+    for(let p=0;p<3;p++) spawnP(x,y,'#2880e0');
+    updateUI();
+  }
+}
+cv.addEventListener('mousedown',e=>clickAt(e.clientX,e.clientY));
+cv.addEventListener('touchstart',e=>{e.preventDefault();clickAt(e.touches[0].clientX,e.touches[0].clientY);},{passive:false});
+
+// ── PANEL ─────────────────────────────────────────────
+document.querySelectorAll('.tab').forEach(t=>{
+  t.addEventListener('click',()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.classList.remove('on'));
+    t.classList.add('on'); G.activeTab=t.dataset.t; renderPanel();
+  });
+});
+
+function renderPanel(){
+  const cont=document.getElementById('tabcont'); cont.innerHTML='';
+  const list=G.activeTab==='fill'?FILL_UPG:G.activeTab==='collect'?COLL_UPG:LOOT_UPG;
+  for(const up of list){
+    const maxed=up.count>=up.max, canAfford=G.gold>=up.costG;
+    const row=document.createElement('div');
+    row.className='urow'+(up.count>0?' bought':'')+((!canAfford||maxed)?' locked':'');
+    let badge='';
+    if(up.wps>0) badge=`+${up.wps} L/s`;
+    if(up.wpc>0) badge=`+${up.wpc}× per click`;
+    if(up.gps)   badge=`+${up.gps} g/s`;
+    if(up.lm>1)  badge=`×${up.lm} loot value`;
+    if(up.lr>1)  badge=`×${up.lr} spawn rate`;
+    const owned=up.count>0?`<div class="ubadge">${up.count}/${up.max} owned${badge?' · '+badge:''}</div>`:(badge?`<div class="ubadge">${badge}</div>`:'');
+    row.innerHTML=`<div class="uicon">${up.icon}</div>
+      <div class="uinfo">
+        <div class="uname">${up.name}</div>
+        <div class="udesc">${up.desc}</div>
+        ${owned}
+      </div>
+      <div class="ucost${maxed?' maxed':''}">${maxed?'✓':fmt(up.costG)+'g'}</div>`;
+    if(!maxed&&canAfford){
+      row.addEventListener('click',()=>buy(up));
+      row.addEventListener('touchstart',e=>{e.preventDefault();buy(up);},{passive:false});
+    }
+    cont.appendChild(row);
+  }
+}
+
+function buy(up){
+  if(G.gold<up.costG||up.count>=up.max)return;
+  G.gold-=up.costG; up.count++;
+  up.costG=Math.ceil(up.costG*(up.max>1?1.85:1));
+  // Apply
+  if(FILL_UPG.includes(up)){
+    G.clickWater=1+FILL_UPG.filter(u=>u.wpc>0).reduce((a,u)=>a+u.wpc*u.count,0);
+    rebuildRim();
+  }
+  if(COLL_UPG.includes(up)) rebuildCollectors();
+  notify(up.name+' purchased!');
+  updateUI(); renderPanel();
+}
+
+function updateUI(){
+  document.getElementById('sw').textContent=fmt(G.water)+'L';
+  document.getElementById('sg').textContent=fmt(G.gold);
+  document.getElementById('sr').textContent=fmt(calcAutoWater());
+  document.getElementById('ss').textContent=LEVELS[G.level].label;
+  const ovp=G.level<LEVELS.length-1?Math.min(G.overflow/cap()*100,100):100;
+  document.getElementById('sov').textContent=Math.floor(ovp)+'%';
+}
+
+function notify(msg){
+  const n=document.getElementById('notif');n.textContent=msg;n.classList.add('on');
+  clearTimeout(notify._t);notify._t=setTimeout(()=>n.classList.remove('on'),3000);
+}
+
+// ── MAIN LOOP ─────────────────────────────────────────
+let last=0;
+function loop(ts){
+  const dt=Math.min((ts-last)/1000,.1); last=ts;
+  time+=dt; G.tick+=dt;
+  G.water+=calcAutoWater()*dt;
+  checkOverflow();
+  maybeSpawn(dt);
+  autoCollect(dt);
+  if(lvlTimer>0){lvlTimer-=dt;if(lvlTimer<=0)document.getElementById('lvlbanner').classList.remove('on');}
+  // Rotate turbines
+  for(const o of bgObjs){if(o.t==='turbine')o.rot+=dt*0.9;}
+  bgCtx.clearRect(0,0,W,H);
+  drawBg(time);
+  drawHole();
+  if(G.tick%0.5<dt){updateUI();renderPanel();}
+  requestAnimationFrame(loop);
+}
+
+rsz();
+window.addEventListener('resize',rsz);
+updateUI(); renderPanel();
+requestAnimationFrame(loop);
+</script>
+</body>
+</html>
