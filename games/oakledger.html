@@ -142,35 +142,18 @@
   .panel-head .meta{font-size:12px;color:var(--ink-soft);font-family:'JetBrains Mono',monospace;}
   .panel-body{padding:18px 20px;}
 
-  /* ===== Add form ===== */
-  .add-form{display:grid;grid-template-columns:1.3fr 1.3fr 0.9fr 1fr auto;gap:12px;align-items:end;}
-  .field label{display:block;font-size:11.5px;text-transform:uppercase;letter-spacing:1.2px;color:var(--ink-soft);margin-bottom:5px;}
-  .field input, .field select{
-    width:100%;padding:9px 10px;border-radius:6px;border:1px solid var(--line);
-    background:#fffdf8;font-family:'JetBrains Mono',monospace;font-size:14px;color:var(--ink);
+  /* ===== Inline editable table cells ===== */
+  .cell-input{
+    width:100%; padding:6px 8px; border-radius:5px; border:1px solid var(--line);
+    background:#fffdf8; font-family:'JetBrains Mono',monospace; font-size:12.5px; color:var(--ink);
+    margin-bottom:4px;
   }
-  .field input:focus, .field select:focus{outline:2px solid var(--brass);outline-offset:1px;}
-  .form-status{grid-column:1/-1;font-size:13px;color:var(--ink-soft);min-height:18px;}
-  .form-status.err{color:var(--loss);}
-
-  .ticker-matches{
-    position:absolute; top:100%; left:0; right:0; z-index:20;
-    background:#fffdf8; border:1px solid var(--brass); border-radius:0 0 8px 8px;
-    box-shadow:var(--shadow); max-height:260px; overflow-y:auto; display:none;
-  }
-  .ticker-matches.show{display:block;}
-  .match-item{padding:8px 12px; cursor:pointer; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:1px;}
-  .match-item:last-child{border-bottom:none;}
-  .match-item:hover{background:rgba(184,149,92,0.18);}
-  .match-symbol{font-family:'JetBrains Mono',monospace; font-weight:700; font-size:13px;}
-  .match-name{font-size:12px; color:var(--ink-soft); font-family:'Source Serif 4',serif;}
-  .match-exch{font-size:10.5px; color:var(--oak); text-transform:uppercase; letter-spacing:0.6px;}
-  .match-empty{padding:10px 12px; font-size:12.5px; color:var(--ink-soft); font-style:italic;}
-
-  .preview-label{font-size:12px; margin-top:6px; font-family:'JetBrains Mono',monospace; min-height:16px;}
-  .preview-label.ok{color:var(--gain);}
-  .preview-label.bad{color:var(--loss);}
-  .preview-label.pending{color:var(--ink-soft); font-style:italic;}
+  .cell-input:focus{outline:2px solid var(--brass); outline-offset:1px;}
+  select.cell-input{cursor:pointer;}
+  td.name-cell{min-width:230px;}
+  .name-label{font-size:11px; color:var(--ink-soft); display:block; margin-top:2px;}
+  .checking-label{font-size:11px; color:var(--ink-soft); font-style:italic; display:block; margin-top:2px;}
+  .manual-toggle{font-size:10.5px; color:var(--oak); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; margin-top:2px; display:block;}
 
   /* ===== Table ===== */
   .table-wrap{overflow-x:auto;}
@@ -202,7 +185,6 @@
   @media (max-width: 900px){
     .hero-row{grid-template-columns:1fr 1fr;}
     .charts-grid{grid-template-columns:1fr;}
-    .add-form{grid-template-columns:1fr 1fr;}
   }
   footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:20px;}
 </style>
@@ -223,6 +205,7 @@
       <input type="file" id="fileLoad" accept="application/json" style="display:none">
       <button class="btn-ghost" id="btnLoad">Open portfolio…</button>
       <button class="btn-brass" id="btnSave">Save to device</button>
+      <span id="saveStatus" style="align-self:center;font-size:12px;color:var(--brass-light);font-family:'JetBrains Mono',monospace;"></span>
     </div>
   </div>
 </header>
@@ -252,50 +235,24 @@
   </div>
 
   <section class="panel">
-    <div class="panel-head"><h2>Add a holding</h2></div>
-    <div class="panel-body">
-      <div class="add-form">
-        <div class="field" style="position:relative;">
-          <label>Ticker</label>
-          <input id="inTicker" placeholder="e.g. AAPL, ASML, VWCE" autocomplete="off">
-          <div id="tickerMatches" class="ticker-matches"></div>
-        </div>
-        <div class="field">
-          <label>Exchange</label>
-          <select id="inExchange"></select>
-          <input id="inCustomSuffix" placeholder="Yahoo suffix, e.g. .DE" style="display:none;margin-top:6px;">
-        </div>
-        <div class="field">
-          <label>Quantity held</label>
-          <input id="inQty" type="number" step="any" min="0" placeholder="0">
-        </div>
-        <div class="field">
-          <label>Avg. price paid (EUR)</label>
-          <input id="inAvg" type="number" step="any" min="0" placeholder="0.00">
-          <div id="pricePreview" class="preview-label"></div>
-        </div>
-        <button class="btn-brass" id="btnAdd">+ Add to ledger</button>
-        <div class="form-status" id="formStatus"></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="panel">
     <div class="panel-head">
       <h2>Holdings</h2>
-      <div class="meta" id="tableMeta"></div>
+      <div style="display:flex;align-items:center;gap:14px;">
+        <div class="meta" id="tableMeta"></div>
+        <button class="btn-brass btn-small" id="btnAddRow">+ Add new holding</button>
+      </div>
     </div>
     <div class="panel-body table-wrap">
       <table>
         <thead>
           <tr>
-            <th>Stock</th><th>Qty</th><th>Avg cost (EUR)</th><th>Price</th><th>Prev close</th>
+            <th style="min-width:230px;">Stock</th><th>Qty</th><th>Avg cost (EUR)</th><th>Price</th><th>Prev close</th>
             <th>Chg</th><th>Value</th><th>Value (EUR)</th><th>P/L (EUR)</th>
             <th>Div/share</th><th>Ex-div date</th><th></th>
           </tr>
         </thead>
         <tbody id="tbody">
-          <tr class="empty-row"><td colspan="12">Your ledger is empty — add your first holding above.</td></tr>
+          <tr class="empty-row"><td colspan="12">Your ledger is empty — click "+ Add new holding" to begin.</td></tr>
         </tbody>
       </table>
     </div>
@@ -319,41 +276,17 @@
 <footer>Prices via Yahoo Finance (best effort, may be delayed). Your data never leaves this device unless you save a file.</footer>
 
 <script>
-/* ============ Exchange map (label -> Yahoo suffix) ============ */
-const EXCHANGES = [
-  {label:"NASDAQ / NYSE (US)", suffix:""},
-  {label:"XETRA (Germany)", suffix:".DE"},
-  {label:"Frankfurt (Germany)", suffix:".F"},
-  {label:"Euronext Amsterdam", suffix:".AS"},
-  {label:"Euronext Brussels", suffix:".BR"},
-  {label:"Euronext Paris", suffix:".PA"},
-  {label:"London Stock Exchange", suffix:".L"},
-  {label:"SIX Swiss Exchange", suffix:".SW"},
-  {label:"Borsa Italiana (Milan)", suffix:".MI"},
-  {label:"BME (Madrid)", suffix:".MC"},
-  {label:"Vienna", suffix:".VI"},
-  {label:"Toronto", suffix:".TO"},
-  {label:"Tokyo", suffix:".T"},
-  {label:"Hong Kong", suffix:".HK"},
-  {label:"Stockholm", suffix:".ST"},
-  {label:"Copenhagen", suffix:".CO"},
-  {label:"Oslo", suffix:".OL"},
-  {label:"Other / custom suffix", suffix:"__custom__"},
-];
-const exSel = document.getElementById('inExchange');
-EXCHANGES.forEach(e=>{
-  const o=document.createElement('option');
-  o.value=e.suffix; o.textContent=e.label; exSel.appendChild(o);
-});
-
 /* ============ State ============ */
-let holdings = [];   // {id,ticker,suffix,exchangeLabel,qty,avgEUR,name,currency,price,prevClose,fx,divRate,exDivDate,divDate,error,updatedAt}
+let holdings = [];   // {id,ticker,suffix,exchangeLabel,matches,showManual,qty,avgEUR,name,currency,price,prevClose,fx,divRate,exDivDate,divDate,error,updatedAt}
 let history = [];    // {t: isoString, valueEUR: number}
 let lastRefreshed = null;
 let trendChart, pieChart;
+const tbody = document.getElementById('tbody');
+const QUOTE_TYPES = new Set(['EQUITY','ETF','MUTUALFUND']);
+const searchTimers = {};
 
-const fmtEUR = n => isFinite(n) ? n.toLocaleString('de-DE',{style:'currency',currency:'EUR'}) : '—';
-const fmtNum = (n,cur) => isFinite(n) ? n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + (cur?(' '+cur):'') : '—';
+const fmtEUR = n => (typeof n==='number' && isFinite(n)) ? n.toLocaleString('de-DE',{style:'currency',currency:'EUR'}) : '—';
+const fmtNum = (n,cur) => (typeof n==='number' && isFinite(n)) ? n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + (cur?(' '+cur):'') : '—';
 const uid = () => Math.random().toString(36).slice(2,10);
 
 /* ============ Fetching via CORS proxies ============ */
@@ -424,159 +357,191 @@ async function fetchFxRate(currency){
   return null;
 }
 
-/* ============ Ticker search / exchange resolution ============ */
-const tickerInput = document.getElementById('inTicker');
-const customSuffixInput = document.getElementById('inCustomSuffix');
-const matchesBox = document.getElementById('tickerMatches');
-const previewLabel = document.getElementById('pricePreview');
-
-function debounce(fn, ms){
-  let t;
-  return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args), ms); };
-}
-
-function currentSuffix(){
-  return exSel.value==='__custom__' ? customSuffixInput.value.trim() : exSel.value;
-}
-function currentSymbol(){
-  return tickerInput.value.trim().toUpperCase() + currentSuffix();
-}
-
-exSel.addEventListener('change', ()=>{
-  customSuffixInput.style.display = exSel.value==='__custom__' ? 'block' : 'none';
-  queuePreview();
-});
-customSuffixInput.addEventListener('input', ()=>queuePreview());
-
-/* --- search-as-you-type suggestions --- */
-const QUOTE_TYPES = new Set(['EQUITY','ETF','MUTUALFUND']);
-const doSearch = debounce(async (query)=>{
-  if(!query){ hideMatches(); return; }
-  try{
-    const u = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(query)}&quotesCount=8&newsCount=0`;
-    const data = await fetchJSON(u);
-    const quotes = (data.quotes||[]).filter(q=>q.symbol && QUOTE_TYPES.has(q.quoteType));
-    renderMatches(quotes);
-  }catch(e){ hideMatches(); }
-}, 400);
-
-tickerInput.addEventListener('input', ()=>{
-  doSearch(tickerInput.value.trim());
-  queuePreview();
-});
-tickerInput.addEventListener('blur', ()=> setTimeout(hideMatches, 150));
-
-function renderMatches(quotes){
-  if(!quotes.length){ matchesBox.innerHTML = `<div class="match-empty">No matching listings found — you can still pick an exchange manually.</div>`; matchesBox.classList.add('show'); return; }
-  matchesBox.innerHTML = quotes.map(q=>`
-    <div class="match-item" data-symbol="${q.symbol}" data-exch="${(q.exchDisp||'').replace(/"/g,'')}">
-      <span class="match-symbol">${q.symbol}</span>
-      <span class="match-name">${q.shortname || q.longname || ''}</span>
-      <span class="match-exch">${q.exchDisp || q.exchange || ''} · ${q.typeDisp || q.quoteType || ''}</span>
-    </div>`).join('');
-  matchesBox.classList.add('show');
-  matchesBox.querySelectorAll('.match-item').forEach(el=>{
-    el.addEventListener('mousedown', (e)=>{ // mousedown fires before input blur
-      e.preventDefault();
-      applyMatch(el.dataset.symbol, el.dataset.exch);
-    });
-  });
-}
-function hideMatches(){ matchesBox.classList.remove('show'); matchesBox.innerHTML=''; }
-
-function applyMatch(symbol, exchDisp){
-  const dot = symbol.lastIndexOf('.');
-  const root = dot>0 ? symbol.slice(0,dot) : symbol;
-  const suffix = dot>0 ? symbol.slice(dot) : '';
-  tickerInput.value = root;
-
-  const known = EXCHANGES.find(e=>e.suffix===suffix && e.suffix!=='');
-  if(known){
-    exSel.value = known.suffix;
-    customSuffixInput.style.display='none';
-  } else if(suffix===''){
-    exSel.value = '';
-    customSuffixInput.style.display='none';
-  } else {
-    exSel.value = '__custom__';
-    customSuffixInput.value = suffix;
-    customSuffixInput.style.display='block';
-  }
-  hideMatches();
-  queuePreview();
-}
-
-/* --- live price preview --- */
-const queuePreview = debounce(updatePricePreview, 500);
-async function updatePricePreview(){
-  const ticker = tickerInput.value.trim().toUpperCase();
-  if(!ticker){ previewLabel.textContent=''; previewLabel.className='preview-label'; previewLabel.dataset.valid=''; return; }
-  const symbol = ticker + currentSuffix();
-  previewLabel.textContent = `Checking ${symbol}…`;
-  previewLabel.className = 'preview-label pending';
-  try{
-    const q = await fetchQuoteData(symbol);
-    let price = q.price, cur = q.currency;
-    if(cur==='GBp' || cur==='GBX'){ price = price/100; cur='GBP'; }
-    previewLabel.textContent = `✓ current price: ${fmtNum(price,cur)}${q.name ? ' · '+q.name : ''}`;
-    previewLabel.className = 'preview-label ok';
-    previewLabel.dataset.valid='1';
-  }catch(e){
-    previewLabel.textContent = `✕ couldn't find ${symbol} on this exchange`;
-    previewLabel.className = 'preview-label bad';
-    previewLabel.dataset.valid='0';
-  }
-}
-
-/* ============ Add / remove ============ */
-document.getElementById('btnAdd').addEventListener('click', addHolding);
-async function addHolding(){
-  const statusEl = document.getElementById('formStatus');
-  statusEl.className='form-status'; statusEl.textContent='';
-  const tickerRaw = tickerInput.value.trim().toUpperCase();
-  const suffix = currentSuffix();
-  const exchangeLabel = exSel.value==='__custom__' ? `Custom (${suffix||'no suffix'})` : exSel.options[exSel.selectedIndex].textContent;
-  const qty = parseFloat(document.getElementById('inQty').value);
-  const avgEUR = parseFloat(document.getElementById('inAvg').value);
-
-  if(!tickerRaw){ statusEl.textContent='Enter a ticker.'; statusEl.className='form-status err'; return; }
-  if(!isFinite(qty) || qty<=0){ statusEl.textContent='Enter a quantity greater than 0.'; statusEl.className='form-status err'; return; }
-  if(!isFinite(avgEUR) || avgEUR<0){ statusEl.textContent='Enter a valid average price in EUR.'; statusEl.className='form-status err'; return; }
-
-  const symbol = tickerRaw + suffix;
-
-  // If we haven't confirmed this symbol yet (or it failed), verify before adding.
-  if(previewLabel.dataset.valid !== '1'){
-    statusEl.textContent = `Verifying ${symbol}…`;
-    await updatePricePreview();
-    if(previewLabel.dataset.valid !== '1'){
-      statusEl.textContent = `Couldn't confirm ${symbol} on this exchange — check the ticker or try another exchange.`;
-      statusEl.className = 'form-status err';
-      return;
-    }
-  }
-
-  const holding = {
-    id: uid(), ticker: tickerRaw, suffix, exchangeLabel, qty, avgEUR,
-    name:null, currency:null, price:null, prevClose:null, fx:null,
+/* ============ Add a blank row ============ */
+document.getElementById('btnAddRow').addEventListener('click', addBlankHolding);
+function addBlankHolding(){
+  const h = {
+    id: uid(), ticker:'', suffix:null, exchangeLabel:'', matches:undefined, showManual:false,
+    qty:0, avgEUR:0, name:null, currency:null, price:null, prevClose:null, fx:null,
     divRate:null, exDivDate:null, divDate:null, error:null, updatedAt:null
   };
-  holdings.push(holding);
+  holdings.push(h);
   renderTable();
-  await refreshOne(holding);
-  renderAll();
-
-  tickerInput.value='';
-  document.getElementById('inQty').value='';
-  document.getElementById('inAvg').value='';
-  previewLabel.textContent=''; previewLabel.className='preview-label'; previewLabel.dataset.valid='';
-  statusEl.textContent = holding.error ? '' : `Added ${holding.name || symbol}.`;
+  renderHero();
+  const tr = tbody.querySelector(`tr[data-id="${h.id}"]`);
+  const inp = tr && tr.querySelector('.ticker-input');
+  if(inp) inp.focus();
 }
 
-function removeHolding(id){
-  holdings = holdings.filter(h=>h.id!==id);
-  renderAll();
+/* ============ Exchange search (per-row) ============ */
+async function searchMatchesFor(h){
+  try{
+    const u = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(h.ticker)}&quotesCount=8&newsCount=0`;
+    const data = await fetchJSON(u);
+    h.matches = (data.quotes||[]).filter(q=>q.symbol && QUOTE_TYPES.has(q.quoteType));
+  }catch(e){
+    h.matches = [];
+  }
+  updateRowNameArea(h);
 }
+
+function exchOptionsHTML(h){
+  if(!h.ticker) return `<option value="">— enter ticker —</option>`;
+  if(h.matches===undefined) return `<option value="">Searching…</option>`;
+  if(h.matches.length===0) return `<option value="">No listings found</option><option value="__manual__">Enter exchange manually…</option>`;
+  const selectedSymbol = h.suffix!=null ? (h.ticker + h.suffix) : null;
+  let html = `<option value="" ${!selectedSymbol?'selected':''} disabled>Select exchange…</option>`;
+  html += h.matches.map((m,i)=>{
+    const sel = m.symbol===selectedSymbol ? 'selected' : '';
+    return `<option value="${i}" ${sel}>${(m.exchDisp||m.exchange||'—')} — ${m.symbol}</option>`;
+  }).join('');
+  html += `<option value="__manual__">Other / enter manually…</option>`;
+  return html;
+}
+
+/* ============ Row rendering ============ */
+function rowHTML(h){
+  const value = h.qty * (h.price||0);
+  const valueEUR = computeValueEUR(h);
+  const cost = computeCostEUR(h);
+  const pl = valueEUR - cost;
+  const chg = (h.prevClose && h.price!=null) ? ((h.price-h.prevClose)/h.prevClose*100) : null;
+  const exDiv = h.exDivDate ? new Date(h.exDivDate).toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : '—';
+
+  return `<tr data-id="${h.id}">
+    <td class="name-cell">
+      <input type="text" class="cell-input ticker-input" value="${h.ticker||''}" placeholder="Ticker e.g. AAPL" autocomplete="off">
+      ${h.showManual
+        ? `<input type="text" class="cell-input manual-suffix-input" placeholder="Suffix e.g. .DE (blank = US)" value="${h.suffix||''}">
+           <button type="button" class="manual-toggle" data-action="back-to-search">← back to search</button>`
+        : `<select class="cell-input exch-select">${exchOptionsHTML(h)}</select>`}
+      ${nameAreaHTML(h)}
+    </td>
+    <td><input type="number" class="cell-input qty-input" value="${h.qty||''}" step="any" min="0" placeholder="0"></td>
+    <td><input type="number" class="cell-input avg-input" value="${h.avgEUR||''}" step="any" min="0" placeholder="0.00"></td>
+    <td data-field="price">${fmtNum(h.price,h.currency)}</td>
+    <td data-field="prevclose">${fmtNum(h.prevClose,h.currency)}</td>
+    <td data-field="chg" class="${chg==null?'':(chg>=0?'pos':'neg')}">${chg==null?'—':(chg>=0?'+':'')+chg.toFixed(2)+'%'}</td>
+    <td data-field="value">${fmtNum(value,h.currency)}</td>
+    <td data-field="valueeur">${fmtEUR(valueEUR)}</td>
+    <td data-field="pl" class="${pl>=0?'pos':'neg'}">${isFinite(pl)?(pl>=0?'+':'')+fmtEUR(pl):'—'}</td>
+    <td data-field="div">${h.divRate!=null ? fmtNum(h.divRate,h.currency) : '—'}</td>
+    <td data-field="exdiv">${exDiv}</td>
+    <td><button type="button" class="btn-small btn-danger" data-action="remove">Remove</button></td>
+  </tr>`;
+}
+
+function nameAreaHTML(h){
+  if(h.error) return `<span class="checking-label" style="color:var(--loss);">${h.error}</span>`;
+  if(h.name) return `<span class="name-label">${h.name}</span>`;
+  if(h.ticker) return `<span class="checking-label">${h.matches===undefined?'Searching…':(h.suffix==null?'Pick an exchange above ↑':'')}</span>`;
+  return '';
+}
+
+function updateRowNameArea(h){
+  const tr = tbody.querySelector(`tr[data-id="${h.id}"]`); if(!tr) return;
+  const sel = tr.querySelector('.exch-select');
+  if(sel) sel.innerHTML = exchOptionsHTML(h);
+  const nameCell = tr.querySelector('td.name-cell');
+  if(nameCell){
+    const old = nameCell.querySelector('.name-label, .checking-label');
+    if(old) old.remove();
+    const html = nameAreaHTML(h);
+    if(html) nameCell.insertAdjacentHTML('beforeend', html);
+  }
+}
+
+function updateRowComputed(h){
+  const tr = tbody.querySelector(`tr[data-id="${h.id}"]`); if(!tr) return;
+  const value = h.qty * (h.price||0);
+  const valueEUR = computeValueEUR(h);
+  const pl = valueEUR - computeCostEUR(h);
+  const setF = (field,text)=>{ const el = tr.querySelector(`[data-field="${field}"]`); if(el) el.textContent = text; };
+  setF('value', fmtNum(value,h.currency));
+  setF('valueeur', fmtEUR(valueEUR));
+  const plCell = tr.querySelector('[data-field="pl"]');
+  if(plCell){ plCell.textContent = isFinite(pl) ? (pl>=0?'+':'')+fmtEUR(pl) : '—'; plCell.className = pl>=0?'pos':'neg'; }
+}
+
+function updateRowFull(h){
+  const tr = tbody.querySelector(`tr[data-id="${h.id}"]`); if(!tr) return;
+  const wrap = document.createElement('tbody');
+  wrap.innerHTML = rowHTML(h);
+  tr.replaceWith(wrap.firstElementChild);
+}
+
+/* ============ Event delegation ============ */
+tbody.addEventListener('input', (e)=>{
+  const tr = e.target.closest('tr'); if(!tr) return;
+  const h = holdings.find(x=>x.id===tr.dataset.id); if(!h) return;
+
+  if(e.target.classList.contains('ticker-input')){
+    h.ticker = e.target.value.trim().toUpperCase();
+    h.matches = undefined; h.suffix = null; h.exchangeLabel=''; h.price=null; h.prevClose=null;
+    h.error=null; h.name=null; h.fx=null;
+    updateRowNameArea(h);
+    clearTimeout(searchTimers[h.id]);
+    if(h.ticker){
+      searchTimers[h.id] = setTimeout(()=>searchMatchesFor(h), 400);
+    } else {
+      h.matches = []; updateRowNameArea(h);
+    }
+    updateRowComputed(h); renderHero();
+  } else if(e.target.classList.contains('qty-input')){
+    h.qty = parseFloat(e.target.value) || 0;
+    updateRowComputed(h); renderHero();
+  } else if(e.target.classList.contains('avg-input')){
+    h.avgEUR = parseFloat(e.target.value) || 0;
+    updateRowComputed(h); renderHero();
+  } else if(e.target.classList.contains('manual-suffix-input')){
+    h.suffix = e.target.value.trim();
+    h.exchangeLabel = 'Custom';
+    clearTimeout(searchTimers[h.id+'_m']);
+    searchTimers[h.id+'_m'] = setTimeout(async ()=>{
+      await refreshOne(h);
+      updateRowFull(h); renderHero(); renderCharts(); renderDivList(); recordSnapshot();
+    }, 600);
+  }
+});
+
+tbody.addEventListener('change', (e)=>{
+  const tr = e.target.closest('tr'); if(!tr) return;
+  const h = holdings.find(x=>x.id===tr.dataset.id); if(!h) return;
+  if(e.target.classList.contains('exch-select')){
+    const val = e.target.value;
+    if(val === '__manual__'){
+      h.showManual = true;
+      renderTable();
+      const newTr = tbody.querySelector(`tr[data-id="${h.id}"]`);
+      const inp = newTr && newTr.querySelector('.manual-suffix-input');
+      if(inp) inp.focus();
+      return;
+    }
+    const match = (h.matches||[])[parseInt(val)];
+    if(match){
+      const dot = match.symbol.lastIndexOf('.');
+      h.suffix = dot>0 ? match.symbol.slice(dot) : '';
+      h.exchangeLabel = match.exchDisp || match.exchange || '';
+      h.name = match.shortname || match.longname || h.ticker;
+      refreshOne(h).then(()=>{
+        updateRowFull(h); renderHero(); renderCharts(); renderDivList(); recordSnapshot();
+      });
+    }
+  }
+});
+
+tbody.addEventListener('click', (e)=>{
+  const action = e.target.dataset.action; if(!action) return;
+  const tr = e.target.closest('tr'); if(!tr) return;
+  const h = holdings.find(x=>x.id===tr.dataset.id); if(!h) return;
+  if(action==='remove'){
+    holdings = holdings.filter(x=>x.id!==h.id);
+    renderAll();
+  } else if(action==='back-to-search'){
+    h.showManual = false;
+    renderTable();
+  }
+});
 
 /* ============ Refresh ============ */
 document.getElementById('btnRefresh').addEventListener('click', refreshAll);
@@ -659,41 +624,12 @@ function renderHero(){
 }
 
 function renderTable(){
-  const tbody = document.getElementById('tbody');
   document.getElementById('tableMeta').textContent = holdings.length ? `${holdings.length} position${holdings.length>1?'s':''}` : '';
   if(holdings.length===0){
-    tbody.innerHTML = `<tr class="empty-row"><td colspan="12">Your ledger is empty — add your first holding above.</td></tr>`;
+    tbody.innerHTML = `<tr class="empty-row"><td colspan="12">Your ledger is empty — click "+ Add new holding" to begin.</td></tr>`;
     return;
   }
-  tbody.innerHTML = holdings.map(h=>{
-    if(h.error){
-      return `<tr>
-        <td class="name-cell"><span class="stock-name">${h.ticker}${h.suffix}</span><span class="stock-sub">${h.exchangeLabel}</span></td>
-        <td>${h.qty}</td><td>${fmtEUR(h.avgEUR)}</td>
-        <td class="err-cell" colspan="7">${h.error}</td>
-        <td><button class="btn-small btn-danger" onclick="removeHolding('${h.id}')">Remove</button></td>
-      </tr>`;
-    }
-    const value = computeValueEUR(h);
-    const cost = computeCostEUR(h);
-    const pl = value - cost;
-    const chg = (h.prevClose && h.price!=null) ? ((h.price-h.prevClose)/h.prevClose*100) : null;
-    const exDiv = h.exDivDate ? h.exDivDate.toLocaleDateString('de-DE',{day:'2-digit',month:'short',year:'numeric'}) : '—';
-    return `<tr>
-      <td class="name-cell"><span class="stock-name">${h.name||h.ticker}</span><span class="stock-sub">${h.ticker}${h.suffix} · <span class="pill">${h.exchangeLabel}</span></span></td>
-      <td>${h.qty}</td>
-      <td>${fmtEUR(h.avgEUR)}</td>
-      <td>${fmtNum(h.price,h.currency)}</td>
-      <td>${fmtNum(h.prevClose,h.currency)}</td>
-      <td class="${chg==null?'':(chg>=0?'pos':'neg')}">${chg==null?'—':(chg>=0?'+':'')+chg.toFixed(2)+'%'}</td>
-      <td>${fmtNum(h.qty*h.price, h.currency)}</td>
-      <td>${fmtEUR(value)}</td>
-      <td class="${pl>=0?'pos':'neg'}">${(pl>=0?'+':'')+fmtEUR(pl)}</td>
-      <td>${h.divRate!=null ? fmtNum(h.divRate,h.currency) : '—'}</td>
-      <td>${exDiv}</td>
-      <td><button class="btn-small btn-danger" onclick="removeHolding('${h.id}')">Remove</button></td>
-    </tr>`;
-  }).join('');
+  tbody.innerHTML = holdings.map(rowHTML).join('');
 }
 
 function renderDivList(){
@@ -758,6 +694,7 @@ function renderCharts(){
 }
 
 /* ============ Save / Load ============ */
+const saveStatus = document.getElementById('saveStatus');
 document.getElementById('btnSave').addEventListener('click', savePortfolio);
 async function savePortfolio(){
   const payload = {
@@ -774,7 +711,8 @@ async function savePortfolio(){
       const writable = await handle.createWritable();
       await writable.write(blob);
       await writable.close();
-      document.getElementById('formStatus').textContent = 'Portfolio saved.';
+      saveStatus.textContent = 'Saved ✓';
+      setTimeout(()=>saveStatus.textContent='', 3000);
       return;
     }catch(e){ /* user cancelled or unsupported — fall through to download */ }
   }
@@ -782,6 +720,8 @@ async function savePortfolio(){
   a.href = URL.createObjectURL(blob);
   a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
+  saveStatus.textContent = 'Downloaded ✓';
+  setTimeout(()=>saveStatus.textContent='', 3000);
 }
 
 document.getElementById('btnLoad').addEventListener('click', ()=> document.getElementById('fileLoad').click());
@@ -793,13 +733,17 @@ document.getElementById('fileLoad').addEventListener('change', async (e)=>{
     const data = JSON.parse(text);
     if(!data.holdings) throw new Error('Not a valid Oakledger file');
     holdings = data.holdings.map(h=>({
-      id: h.id||uid(), ticker:h.ticker, suffix:h.suffix||'', exchangeLabel:h.exchangeLabel||'',
+      id: h.id||uid(), ticker:h.ticker, suffix: (h.suffix!=null ? h.suffix : ''), exchangeLabel:h.exchangeLabel||'',
+      matches:undefined, showManual:false,
       qty:h.qty, avgEUR:h.avgEUR, name:null, currency:null, price:null, prevClose:null, fx:null,
       divRate:null, exDivDate:null, divDate:null, error:null, updatedAt:null
     }));
     history = Array.isArray(data.history) ? data.history : [];
     renderAll();
     await refreshAll();
+    holdings.forEach(h=>{ if(h.ticker) searchMatchesFor(h); }); // background: populate exchange dropdown options
+    saveStatus.textContent = `Loaded ${holdings.length} holding${holdings.length===1?'':'s'} ✓`;
+    setTimeout(()=>saveStatus.textContent='', 4000);
   }catch(err){
     alert('Could not load that file: '+err.message);
   }
