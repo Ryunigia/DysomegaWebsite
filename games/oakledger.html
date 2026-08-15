@@ -150,6 +150,10 @@
   }
   .cell-input:focus{outline:2px solid var(--brass); outline-offset:1px;}
   select.cell-input{cursor:pointer;}
+  /* Hide native number spinners (they overlap the value in narrow table cells) */
+  input.cell-input[type=number]{ -moz-appearance:textfield; padding-right:8px; }
+  input.cell-input[type=number]::-webkit-outer-spin-button,
+  input.cell-input[type=number]::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
   td.name-cell{min-width:230px;}
   .name-label{font-size:11px; color:var(--ink-soft); display:block; margin-top:2px;}
   .checking-label{font-size:11px; color:var(--ink-soft); font-style:italic; display:block; margin-top:2px;}
@@ -292,15 +296,32 @@ const uid = () => Math.random().toString(36).slice(2,10);
 /* ============ Fetching via CORS proxies ============ */
 const PROXIES = [
   u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u),
-  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
   u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://thingproxy.freeboard.io/fetch/' + u,
+  u => 'https://api.allorigins.win/get?url=' + encodeURIComponent(u), // wraps JSON in {contents:"..."}
 ];
+async function fetchWithTimeout(url, ms){
+  const ctrl = new AbortController();
+  const t = setTimeout(()=>ctrl.abort(), ms);
+  try{
+    return await fetch(url, {signal: ctrl.signal});
+  } finally {
+    clearTimeout(t);
+  }
+}
 async function fetchJSON(url){
   let lastErr;
   for(const p of PROXIES){
     try{
-      const res = await fetch(p(url));
+      const res = await fetchWithTimeout(p(url), 7000);
       if(!res.ok) throw new Error('HTTP '+res.status);
+      const isWrapped = p.toString().includes('allorigins.win/get');
+      if(isWrapped){
+        const wrapped = await res.json();
+        if(typeof wrapped.contents !== 'string') throw new Error('Empty proxy response');
+        return JSON.parse(wrapped.contents);
+      }
       return await res.json();
     }catch(e){ lastErr = e; }
   }
