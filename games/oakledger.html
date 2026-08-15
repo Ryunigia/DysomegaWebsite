@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>Oakledger — Portfolio Tracker</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,500&family=Source+Serif+4:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -58,7 +61,7 @@
     background:repeating-linear-gradient(90deg, var(--brass) 0 18px, var(--brass-light) 18px 20px);
     opacity:.5;
   }
-  .banner-inner{max-width:1280px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:18px;}
+  .banner-inner{max-width:1680px;margin:0 auto;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:18px;}
   .brand{display:flex;align-items:center;gap:14px;}
   .brand .seal{
     width:52px;height:52px;border-radius:50%;
@@ -105,7 +108,7 @@
   .btn-danger{background:var(--loss-bg);color:var(--loss);border:1px solid rgba(156,59,45,0.35);}
 
   /* ===== Layout ===== */
-  main{max-width:1280px;margin:0 auto;padding:26px 28px;}
+  main{max-width:1680px;margin:0 auto;padding:26px 32px;}
 
   .hero-row{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:26px;}
   .hero-card{
@@ -382,7 +385,7 @@ async function fetchFxRate(currency){
 document.getElementById('btnAddRow').addEventListener('click', addBlankHolding);
 function addBlankHolding(){
   const h = {
-    id: uid(), ticker:'', suffix:null, exchangeLabel:'', matches:undefined, showManual:false,
+    id: uid(), ticker:'', suffix:null, exchangeLabel:'', matches:undefined, showManual:false, searchToken:0,
     qty:0, avgEUR:0, name:null, currency:null, price:null, prevClose:null, fx:null,
     divRate:null, exDivDate:null, divDate:null, error:null, updatedAt:null
   };
@@ -395,12 +398,14 @@ function addBlankHolding(){
 }
 
 /* ============ Exchange search (per-row) ============ */
-async function searchMatchesFor(h){
+async function searchMatchesFor(h, token){
   try{
     const u = `https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(h.ticker)}&quotesCount=8&newsCount=0`;
     const data = await fetchJSON(u);
+    if(h.searchToken !== token) return; // a newer search superseded this one — ignore stale result
     h.matches = (data.quotes||[]).filter(q=>q.symbol && QUOTE_TYPES.has(q.quoteType));
   }catch(e){
+    if(h.searchToken !== token) return;
     h.matches = [];
   }
   updateRowNameArea(h);
@@ -486,9 +491,16 @@ function updateRowComputed(h){
 
 function updateRowFull(h){
   const tr = tbody.querySelector(`tr[data-id="${h.id}"]`); if(!tr) return;
-  const wrap = document.createElement('tbody');
-  wrap.innerHTML = rowHTML(h);
-  tr.replaceWith(wrap.firstElementChild);
+  try{
+    const wrap = document.createElement('tbody');
+    wrap.innerHTML = rowHTML(h);
+    const newTr = wrap.firstElementChild;
+    if(newTr) tr.replaceWith(newTr);
+  }catch(err){
+    console.error('Row render failed, falling back to partial update (matches preserved):', err);
+    updateRowNameArea(h);
+    updateRowComputed(h);
+  }
 }
 
 /* ============ Event delegation ============ */
@@ -502,8 +514,9 @@ tbody.addEventListener('input', (e)=>{
     h.error=null; h.name=null; h.fx=null;
     updateRowNameArea(h);
     clearTimeout(searchTimers[h.id]);
+    const token = ++h.searchToken;
     if(h.ticker){
-      searchTimers[h.id] = setTimeout(()=>searchMatchesFor(h), 400);
+      searchTimers[h.id] = setTimeout(()=>searchMatchesFor(h, token), 400);
     } else {
       h.matches = []; updateRowNameArea(h);
     }
@@ -545,7 +558,11 @@ tbody.addEventListener('change', (e)=>{
       h.exchangeLabel = match.exchDisp || match.exchange || '';
       h.name = match.shortname || match.longname || h.ticker;
       refreshOne(h).then(()=>{
-        updateRowFull(h); renderHero(); renderCharts(); renderDivList(); recordSnapshot();
+        try{
+          updateRowFull(h); renderHero(); renderCharts(); renderDivList(); recordSnapshot();
+        }catch(err){
+          console.error('Post-selection render error (holding preserved):', err);
+        }
       });
     }
   }
@@ -755,14 +772,14 @@ document.getElementById('fileLoad').addEventListener('change', async (e)=>{
     if(!data.holdings) throw new Error('Not a valid Oakledger file');
     holdings = data.holdings.map(h=>({
       id: h.id||uid(), ticker:h.ticker, suffix: (h.suffix!=null ? h.suffix : ''), exchangeLabel:h.exchangeLabel||'',
-      matches:undefined, showManual:false,
+      matches:undefined, showManual:false, searchToken:0,
       qty:h.qty, avgEUR:h.avgEUR, name:null, currency:null, price:null, prevClose:null, fx:null,
       divRate:null, exDivDate:null, divDate:null, error:null, updatedAt:null
     }));
     history = Array.isArray(data.history) ? data.history : [];
     renderAll();
     await refreshAll();
-    holdings.forEach(h=>{ if(h.ticker) searchMatchesFor(h); }); // background: populate exchange dropdown options
+    holdings.forEach(h=>{ if(h.ticker) searchMatchesFor(h, ++h.searchToken); }); // background: populate exchange dropdown options
     saveStatus.textContent = `Loaded ${holdings.length} holding${holdings.length===1?'':'s'} ✓`;
     setTimeout(()=>saveStatus.textContent='', 4000);
   }catch(err){
