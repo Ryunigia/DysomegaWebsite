@@ -160,6 +160,13 @@
   td.name-cell{min-width:230px;}
   .name-label{font-size:11px; color:var(--ink-soft); display:block; margin-top:2px;}
   .checking-label{font-size:11px; color:var(--ink-soft); font-style:italic; display:block; margin-top:2px;}
+  .retry-btn{
+    display:block; margin-top:4px; font-family:'JetBrains Mono',monospace; font-size:10.5px;
+    background:var(--loss-bg); color:var(--loss); border:1px solid rgba(156,59,45,0.35);
+    border-radius:5px; padding:3px 8px; cursor:pointer;
+  }
+  .retry-btn:hover{background:#e9c9c0;}
+  .retry-btn:disabled{opacity:.6; cursor:default;}
   .manual-toggle{font-size:10.5px; color:var(--oak); text-decoration:underline; cursor:pointer; background:none; border:none; padding:0; margin-top:2px; display:block;}
 
   /* ===== Table ===== */
@@ -194,6 +201,13 @@
     .charts-grid{grid-template-columns:1fr;}
   }
   footer{text-align:center;color:var(--ink-soft);font-size:12px;padding:20px;}
+
+  #versionBadge{
+    position:fixed; right:12px; bottom:10px; z-index:50;
+    font-family:'JetBrains Mono',monospace; font-size:11px; color:var(--ink-soft);
+    background:rgba(243,232,214,0.85); border:1px solid var(--line); border-radius:5px;
+    padding:3px 8px; pointer-events:none;
+  }
 </style>
 </head>
 <body>
@@ -282,6 +296,8 @@
 
 <footer>Prices via Yahoo Finance (best effort, may be delayed). Your data never leaves this device unless you save a file.</footer>
 
+<div id="versionBadge">v1.1</div>
+
 <script>
 /* ============ State ============ */
 let holdings = [];   // {id,ticker,suffix,exchangeLabel,matches,showManual,qty,avgEUR,name,currency,price,prevClose,fx,divRate,exDivDate,divDate,error,updatedAt}
@@ -291,6 +307,8 @@ let trendChart, pieChart;
 const tbody = document.getElementById('tbody');
 const QUOTE_TYPES = new Set(['EQUITY','ETF','MUTUALFUND']);
 const searchTimers = {};
+const retryTimers = {}; // per-holding auto-retry countdown: {intervalId, timeoutId}
+const RETRY_DELAY_MS = 60000;
 
 const fmtEUR = n => (typeof n==='number' && isFinite(n)) ? n.toLocaleString('de-DE',{style:'currency',currency:'EUR'}) : '—';
 const fmtNum = (n,cur) => (typeof n==='number' && isFinite(n)) ? n.toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}) + (cur?(' '+cur):'') : '—';
@@ -385,7 +403,7 @@ async function fetchFxRate(currency){
 document.getElementById('btnAddRow').addEventListener('click', addBlankHolding);
 function addBlankHolding(){
   const h = {
-    id: uid(), ticker:'', suffix:null, exchangeLabel:'', matches:undefined, showManual:false, searchToken:0,
+    id: uid(), ticker:'', suffix:null, exchangeLabel:'', matches:undefined, showManual:false, searchToken:0, retryAt:null,
     qty:0, avgEUR:0, name:null, currency:null, price:null, prevClose:null, fx:null,
     divRate:null, exDivDate:null, divDate:null, error:null, updatedAt:null
   };
@@ -457,8 +475,16 @@ function rowHTML(h){
   </tr>`;
 }
 
+function retrySecondsLeft(h){
+  return h.retryAt ? Math.max(0, Math.ceil((h.retryAt - Date.now())/1000)) : 0;
+}
+
 function nameAreaHTML(h){
-  if(h.error) return `<span class="checking-label" style="color:var(--loss);">${h.error}</span>`;
+  if(h.error){
+    const secs = retrySecondsLeft(h);
+    return `<span class="checking-label" style="color:var(--loss);">${h.error}</span>
+      <button type="button" class="retry-btn" data-action="retry">Retry now${secs>0?` (${secs}s)`:''}</button>`;
+  }
   if(h.name) return `<span class="name-label">${h.name}</span>`;
   if(h.ticker) return `<span class="checking-label">${h.matches===undefined?'Searching…':(h.suffix==null?'Pick an exchange above ↑':'')}</span>`;
   return '';
@@ -470,11 +496,17 @@ function updateRowNameArea(h){
   if(sel) sel.innerHTML = exchOptionsHTML(h);
   const nameCell = tr.querySelector('td.name-cell');
   if(nameCell){
-    const old = nameCell.querySelector('.name-label, .checking-label');
-    if(old) old.remove();
+    nameCell.querySelectorAll('.name-label, .checking-label, .retry-btn').forEach(el=>el.remove());
     const html = nameAreaHTML(h);
     if(html) nameCell.insertAdjacentHTML('beforeend', html);
   }
+}
+
+function updateRetryLabel(h){
+  const tr = tbody.querySelector(`tr[data-id="${h.id}"]`); if(!tr) return;
+  const btn = tr.querySelector('.retry-btn'); if(!btn) return;
+  const secs = retrySecondsLeft(h);
+  btn.textContent = `Retry now${secs>0?` (${secs}s)`:''}`;
 }
 
 function updateRowComputed(h){
@@ -512,6 +544,7 @@ tbody.addEventListener('input', (e)=>{
     h.ticker = e.target.value.trim().toUpperCase();
     h.matches = undefined; h.suffix = null; h.exchangeLabel=''; h.price=null; h.prevClose=null;
     h.error=null; h.name=null; h.fx=null;
+    clearRetryTimers(h);
     updateRowNameArea(h);
     clearTimeout(searchTimers[h.id]);
     const token = ++h.searchToken;
@@ -532,7 +565,7 @@ tbody.addEventListener('input', (e)=>{
     h.exchangeLabel = 'Custom';
     clearTimeout(searchTimers[h.id+'_m']);
     searchTimers[h.id+'_m'] = setTimeout(async ()=>{
-      await refreshOne(h);
+      await refreshOneManaged(h);
       updateRowFull(h); renderHero(); renderCharts(); renderDivList(); recordSnapshot();
     }, 600);
   }
@@ -557,7 +590,7 @@ tbody.addEventListener('change', (e)=>{
       h.suffix = dot>0 ? match.symbol.slice(dot) : '';
       h.exchangeLabel = match.exchDisp || match.exchange || '';
       h.name = match.shortname || match.longname || h.ticker;
-      refreshOne(h).then(()=>{
+      refreshOneManaged(h).then(()=>{
         try{
           updateRowFull(h); renderHero(); renderCharts(); renderDivList(); recordSnapshot();
         }catch(err){
@@ -573,11 +606,18 @@ tbody.addEventListener('click', (e)=>{
   const tr = e.target.closest('tr'); if(!tr) return;
   const h = holdings.find(x=>x.id===tr.dataset.id); if(!h) return;
   if(action==='remove'){
+    clearRetryTimers(h);
+    clearTimeout(searchTimers[h.id]);
+    clearTimeout(searchTimers[h.id+'_m']);
     holdings = holdings.filter(x=>x.id!==h.id);
     renderAll();
   } else if(action==='back-to-search'){
     h.showManual = false;
     renderTable();
+  } else if(action==='retry'){
+    e.target.textContent = 'Retrying…';
+    e.target.disabled = true;
+    retryHolding(h);
   }
 });
 
@@ -602,10 +642,37 @@ async function refreshOne(h){
     h.error = 'Price unavailable — tap refresh to retry';
   }
 }
+
+/* --- per-holding auto-retry (60s) --- */
+function clearRetryTimers(h){
+  const t = retryTimers[h.id];
+  if(t){ clearInterval(t.intervalId); clearTimeout(t.timeoutId); delete retryTimers[h.id]; }
+  h.retryAt = null;
+}
+function scheduleRetry(h){
+  clearRetryTimers(h);
+  h.retryAt = Date.now() + RETRY_DELAY_MS;
+  const intervalId = setInterval(()=>updateRetryLabel(h), 1000);
+  const timeoutId = setTimeout(()=>retryHolding(h), RETRY_DELAY_MS);
+  retryTimers[h.id] = {intervalId, timeoutId};
+  updateRetryLabel(h);
+}
+async function refreshOneManaged(h){
+  clearRetryTimers(h);
+  await refreshOne(h);
+  if(h.error) scheduleRetry(h);
+}
+async function retryHolding(h){
+  clearRetryTimers(h);
+  await refreshOneManaged(h);
+  updateRowFull(h);
+  renderHero(); renderCharts(); renderDivList(); recordSnapshot();
+}
+
 async function refreshAll(){
   const btn = document.getElementById('btnRefresh');
   btn.disabled = true; btn.textContent = '↻ Refreshing…';
-  await Promise.all(holdings.map(refreshOne));
+  await Promise.all(holdings.map(refreshOneManaged));
   lastRefreshed = new Date();
   recordSnapshot();
   renderAll();
@@ -770,9 +837,10 @@ document.getElementById('fileLoad').addEventListener('change', async (e)=>{
     const text = await file.text();
     const data = JSON.parse(text);
     if(!data.holdings) throw new Error('Not a valid Oakledger file');
+    holdings.forEach(h=>{ clearRetryTimers(h); clearTimeout(searchTimers[h.id]); clearTimeout(searchTimers[h.id+'_m']); });
     holdings = data.holdings.map(h=>({
       id: h.id||uid(), ticker:h.ticker, suffix: (h.suffix!=null ? h.suffix : ''), exchangeLabel:h.exchangeLabel||'',
-      matches:undefined, showManual:false, searchToken:0,
+      matches:undefined, showManual:false, searchToken:0, retryAt:null,
       qty:h.qty, avgEUR:h.avgEUR, name:null, currency:null, price:null, prevClose:null, fx:null,
       divRate:null, exDivDate:null, divDate:null, error:null, updatedAt:null
     }));
